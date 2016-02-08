@@ -1,0 +1,95 @@
+#!/bin/bash
+
+SOURCEBUILDER="ThirdPartySource"
+LUA="lua-5.3.2"
+SDL2="SDL2-2.0.4"
+SDL2_IMAGE="SDL2_image-2.0.1"
+TRASHFILE="TRASHFILE.trash"
+
+##CHECKING SOURCE FILE EXISTENCE##
+if test ! -e "$SOURCEBUILDER/$LUA.tar.gz"; then
+	echo "lua source '$SOURCEBUILDER/$LUA.tar.gz' not found"
+	echo "Aborting..."
+	exit 1
+fi
+
+if test ! -e "$SOURCEBUILDER/$SDL2.tar.gz"; then
+	echo "SDL2 source '$SOURCEBUILDER/$SDL2.tar.gz' not found"
+	echo "Aborting..."
+	exit 1
+fi
+
+if test ! -e "$SOURCEBUILDER/$SDL2_IMAGE.tar.gz"; then
+	echo "SDL2_image source '$SDL2_IMAGE.tar.gz' not found"
+	echo "Aborting..."
+	exit 1
+fi
+
+
+
+#checking for required command
+if ! hash tar; then
+	echo "'tar' command found, but it's needed for building the framework. Please, install the 'tar' command before continue"
+	echo "Aborting..."
+	exit 2
+else
+	echo "'tar' command is present"
+fi
+
+if (! hash g++) || (! hash gcc); then
+	sudo apt-get install build-essential
+	sudo apt-get update
+	sudo apt-get upgrade
+else
+	echo "gcc and g++ command is present"
+fi
+
+
+
+#lua making
+cd $SOURCEBUILDER
+sudo apt-get install libreadline-dev
+tar -zvxf "$LUA.tar.gz" > $TRASHFILE
+cd $LUA
+make linux
+sudo make install
+mv "src/" "lua/"
+mv "lua/" "../../"
+cd ..
+rm -r $LUA
+
+#SDL2 making
+tar -zvxf "$SDL2.tar.gz" > $TRASHFILE
+sudo apt-get install libsdl-dev libxext-dev
+cd $SDL2
+mkdir "build"
+cd "build/"
+.././configure
+make
+sudo make install
+mkdir "../../../SDL2"
+mv "build/" "../../../SDL2/"
+cd ..
+mv "include/" "../../SDL2/"
+cd ..
+rm -r $SDL2
+
+#SDL2_image making
+tar -zvxf "$SDL2_IMAGE.tar.gz" > $TRASHFILE
+sudo apt-get install libsdl2-gfx-1.0-0 libsdl2-gfx-dbg libsdl2-gfx-dev libsdl2-gfx-doc libsdl2-image-dbg libsdl2-image-dev libsdl2-mixer-dbg libsdl2-mixer-dev libsdl2-net-dbg libsdl2-net-dev libsdl2-ttf-dbg libsdl2-ttf-dev libsdl2-2.0-0 libsdl2-dbg libsdl2-dev libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-net-2.0-0 libsdl2-ttf-2.0-0
+sudo apt-get install libxml2-dev libpng12-dev libjpeg8-dev libwebp-dev libtiff5-dev
+cd $SDL2_IMAGE
+./configure
+make
+sudo make install
+cd ..
+mv "$SDL2_IMAGE/" "SDL_image/"
+mv "SDL_image/" "../SDL2/"
+rm $TRASHFILE
+cd ..
+
+#lib installing
+mkdir "SDL2/lib/"
+cp /usr/local/lib/*SDL2* "SDL2/lib/"
+
+echo "*done*"

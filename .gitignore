@@ -1,0 +1,7 @@
+/SDL2
+/lua
+/wiki
+/Helpful_informations
+*.o
+*.h.gch
+*.so
