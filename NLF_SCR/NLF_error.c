@@ -19,9 +19,10 @@ void NLF_error_init()
 	}
 	*errormsg = NULL;
 	fileName = NULL;
-	errorFlag = NLF_ErrorNone;
-	/*if(filePath == NULL)
-		NLF_error_set_path(NULL);*/
+	errorFlag = NLF_error_set_path(NULL); //using errorFlag just as auxiliar
+	if(errorFlag != NLF_ErrorNone)
+		exit(errorFlag);
+	//no need to set errorFlag to NLF_ErrorNone, it's was already done ;)
 }
 
 void NLF_error_quit()
@@ -62,7 +63,7 @@ void NLF_error_quit()
 		free(filePath);
 	filePath = NULL;
 
-	errorFlag = NLF_ErrorNone;
+	errorFlag = NLF_ErrorNone; //or 0 (zero)
 }
 
 NLF_bool NLF_error_or_warning(NLF_Error e)
@@ -157,12 +158,206 @@ void NLF_error_make_file_crash_report(NLF_Error e, char *msg, ...)
 		//still do know how to treat that
 	}
 }
+
+NLF_Error NLF_error_set_path(const char *stdErrorPath)
+{
+/*
+	Set the path that the system will use to create the files reports in crash cases.
+	this funtion will return NLF_True on success and NLF_False on fail.
+	NOTE: this funtion can only fail if it can't allocate memory!!
+	NOTE²: in error case this funtion generate a crash report
+*/
+	int aux;
+	NLF_bool hasBar;
+	NLF_Error ret;
+
+	if (SDL_LockMutex(filesMutex) == 0)
+	{
+		if(filePath != NULL)
+			free(filePath);
+
+		if(stdErrorPath == NULL)
+		{
+			filePath = (char*) malloc(sizeof(char) * (strlen("ChrashReport") + 2));
+			if(filePath == NULL)
+			{
+				SDL_UnlockMutex(filesMutex);
+				NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate memory, to set the FilePath!", NULL);
+				return NLF_ErrorInsufficientMemory;
+			}
+			#ifdef NLF_OS_WINDOWS
+				strcpy(filePath, "ChrashReport\\");
+			#else
+				strcpy(filePath, "ChrashReport/");
+			#endif
+		}else{
+			aux = strlen(stdErrorPath) - 1; //take the last letter
+			if(stdErrorPath[aux] != '/' && stdErrorPath[aux] != '\\')
+				hasBar = NLF_False;
+			else
+				hasBar = NLF_True;
+
+			filePath = (char*) malloc(sizeof(char) * (aux + 2 + (hasBar == NLF_True ? 0 : 1)));
+			if(filePath == NULL)
+			{
+				SDL_UnlockMutex(filesMutex);
+				NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate memory, to set the FilePath!", NULL);
+				return NLF_ErrorInsufficientMemory;
+			}
+			strcpy(filePath, stdErrorPath);
+
+			if(hasBar == NLF_True)
+			{
+				#ifdef NLF_OS_WINDOWS
+					filePath[aux] = '\\';
+				#else
+					filePath[aux] = '/';
+				#endif
+			}else{
+				#ifdef NLF_OS_WINDOWS
+					filePath[aux + 1] = '\\';
+				#else
+					filePath[aux + 1] = '/';
+				#endif
+				filePath[aux + 2] = '\0';
+			}
+		}
+
+		ret = NLF_ErrorNone;
+		SDL_UnlockMutex(filesMutex);
+	}else{
+		ret = NLF_ErrorSDLMutexLockFail;
+	}
+
+	return ret;
+}
+
+NLF_bool NLF_error_set_flag(NLF_Error e, int args, char *msg, ...)
+{
+/*
+	arguments:
+		e - the error to be set for
+		args - the amount of message given
+		*msg, ... - the messages to he settled
+	set the system error flag and error mansage.
+	after that the system is in state of error, and must be treated
+	returns NLF_Flase if the erro flag is alredy set, returns NLF_True on success
+*/
+	NLF_bool ok;
+	char *aux;
+	int i;
+	va_list lst;
+
+	if(SDL_LockMutex(flagsMutex) == 0)
+	{
+		if(errorFlag == NLF_ErrorNone)
+		{
+			if(errormsg != NULL)
+			{
+				for(i = 0; errormsg[i] != NULL; i++)
+					free(errormsg[i]);
+				free(errormsg);
+			}
+			errormsg = NULL;
+
+			errormsg = (char**) malloc(sizeof(char*)*(args+1));
+			if(errormsg == NULL)
+			{
+				SDL_UnlockMutex(flagsMutex);
+				NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, msg, "mallocing error while setting error flag", NULL);
+				ok = NLF_False;
+			}else{
+				ok = NLF_True;
+			}
+
+			if(ok == NLF_True)
+			{
+				errorFlag = e;
+				aux = msg;
+				va_start(lst, msg);
+				for(i = 0; aux != NULL; i++)
+				{
+					errormsg[i] = (char*) malloc(sizeof(char) * (strlen(aux) + 1));
+					if(errormsg[i] == NULL)
+					{
+						SDL_UnlockMutex(flagsMutex);
+						NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, aux, "mallocing error while setting error flag", NULL);
+					}else{
+						strcpy(errormsg[i], aux);
+					}
+					aux = va_arg(lst, char*);
+				}
+				errormsg[i] = NULL; //setting the sentinel and the end of the string array
+				va_end(lst);
+			}
+		}else{
+			ok = NLF_False;
+		}
+
+		SDL_UnlockMutex(flagsMutex);
+	}else{
+		ok = NLF_False;
+	}
+
+	if(ok == NLF_False)
+	{
+		//cleaning arguments from memory in fail case
+		aux = msg;
+		va_start(lst, msg);
+		while(aux != NULL)
+			aux = va_arg(lst, char*);
+		va_end(lst);
+	}
+
+	return ok;
+}
+
+void NLF_error_clean_flag()
+{
+/*
+	clean the errorFalg and the errormsg
+*/
+	int i;
+
+	if(SDL_LockMutex(flagsMutex) == 0)
+	{
+		errorFlag = NLF_ErrorNone;
+		if(errormsg != NULL)
+		{
+			for(i = 0; errormsg[i] != NULL; i++)
+				free(errormsg[i]);
+			free(errormsg);
+		}
+		errormsg = NULL;
+
+		SDL_UnlockMutex(flagsMutex);
+	}else{
+		printf("!!!! the SDL_LockMutex(flagsMutex) has just failed... in NLF_error_clean_flag funtion !!!!\n");
+	}
+}
+
+NLF_Error NLF_error_get_flag()
+{
+/*
+	returns the current error flag
+*/
+	NLF_Error e;
+
+	if(SDL_LockMutex(flagsMutex) == 0)
+	{
+		e = errorFlag;
+		SDL_UnlockMutex(flagsMutex);
+	}
+
+	return e;
+}
 /******************/
 
 
 
 
 /*LOCAL FUNTIONS*/
+
 static void write_error(FILE *f, NLF_Error e, NLF_bool showOStype)
 {
 /*

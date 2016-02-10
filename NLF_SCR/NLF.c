@@ -4,7 +4,7 @@ void NLF_init()
 {
 	printf("Initing NLF...\n");
 
-	printf("\tError module... \n");
+	printf("\tError module... ");
 	NLF_error_init();
 	printf("done\n");
 
