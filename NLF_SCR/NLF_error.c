@@ -347,6 +347,8 @@ NLF_Error NLF_error_get_flag()
 	{
 		e = errorFlag;
 		SDL_UnlockMutex(flagsMutex);
+	}else{
+		e = NLF_ErrorSDLMutexLockFail;
 	}
 
 	return e;

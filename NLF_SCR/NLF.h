@@ -12,6 +12,7 @@
 /*NLF Internal Includes*/
 #include "NLF_error.h"
 #include "NLF_osservice.h"
+#include "NLF_screen.h"
 /***********************/
 
 /*GLOBAL FUNCTIONS*/
