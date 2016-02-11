@@ -107,9 +107,17 @@ void NLF_screen_init()
 		camera.h = videoMode.h;
 	}
 
-	screens.scene = NULL;
-	screens.position = 0;
-	screens.next = NULL;
+	screens = (NLF_Screen*) malloc(sizeof(NLF_Screen));
+	if(screens == NULL)
+	{
+		printf("\tCould not craete NLF_Screen\n");
+		printf("\tAborting\n");
+		NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not craete NLF_Screen", "out of memory ", NULL);
+		exit(NLF_ErrorInsufficientMemory); //I don't know what to do else but quiting... you know, there's no memory =/
+	}
+	screens->scene = NULL;
+	screens->position = 0;
+	screens->next = NULL;
 
 	currentFPS = 0;
 	//there's just no need to the FPS be greater then the display refrash rate

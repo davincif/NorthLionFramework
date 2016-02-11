@@ -9,6 +9,7 @@ void startGame()
 
 int main(int arg, char *argc[])
 {
+
 	NLF_init();
 
 	NLF_game_start(NULL, startGame);

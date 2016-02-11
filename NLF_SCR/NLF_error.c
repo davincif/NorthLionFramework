@@ -123,7 +123,7 @@ void NLF_error_make_file_crash_report(NLF_Error e, char *msg, ...)
 	FILE *f;
 	va_list lst;
 
-	if((filesMutex == NULL || filesMutex == NULL) || (SDL_LockMutex(filesMutex) == 0 && SDL_LockMutex(flagsMutex) == 0))
+	if((filesMutex == NULL || flagsMutex == NULL) || (SDL_LockMutex(filesMutex) == 0 && SDL_LockMutex(flagsMutex) == 0))
 	{
 		//enter here if lock the mutex of if they were not created yeat
 		f = create_report_file(filePath, "CrashReportFile");
@@ -163,8 +163,8 @@ NLF_Error NLF_error_set_path(const char *stdErrorPath)
 {
 /*
 	Set the path that the system will use to create the files reports in crash cases.
-	this funtion will return NLF_True on success and NLF_False on fail.
-	NOTE: this funtion can only fail if it can't allocate memory!!
+	this funtion will return the NLF_error state. "NLF_ErrorNone" if everything was ok.
+	NOTE: this function can only fail if it can't allocate memory or some really bad stuff happens with the mutex!!
 	NOTE²: in error case this funtion generate a crash report
 */
 	int aux;
@@ -501,7 +501,7 @@ static void write_error(FILE *f, NLF_Error e, NLF_bool showOStype)
 		break;
 
 		default:
-			fprintf(f,"origin: ehh... i guess someone made something very very wrong here...\n");
+			fprintf(f,"origin: ehh... I guess someone did something very very wrong here...\n");
 
 		//as long as the warning error will be creted this function will need upgrade just like NLF_error_origin
 	}
