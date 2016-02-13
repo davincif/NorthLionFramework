@@ -17,22 +17,26 @@ int main(int arg, char *argc[])
 
 	NLF_game_start(NULL, startGame);
 
-	printf("criando %d\n", xd++);
 	r = NLF_screen_add(1, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	printf("r = %d\n", r);
-
-	printf("criando %d\n", xd++);
 	r = NLF_screen_add(1, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	printf("r = %d\n", r);
-
-	printf("criando %d\n", xd++);
 	r = NLF_screen_add(2, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	printf("r = %d\n", r);
+	r = NLF_screen_add(5, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
+	r = NLF_screen_add(5, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
+	r = NLF_screen_add(6, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
+	r = NLF_screen_add(7, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
+	//TESTE_RUN_LIST();
+	//TESTE_RUN_LIST - was a funtion that only run the list and print the positions, only to test the code
 
-	printf("criando %d\n", xd++);
-	r = NLF_screen_add(4, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	printf("r = %d\n", r);
-	
+	NLF_screen_remove(6);
+	//TESTE_RUN_LIST();
+	NLF_screen_remove(1);
+	//TESTE_RUN_LIST();
+	NLF_screen_remove(5);
+	//TESTE_RUN_LIST();
+	NLF_screen_remove(5);
+	//TESTE_RUN_LIST();
+	NLF_screen_remove(-1);
+	//TESTE_RUN_LIST();
 
 	NLF_quit();
 

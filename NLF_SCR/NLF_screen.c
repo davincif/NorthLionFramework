@@ -1,5 +1,6 @@
 #include "NLF_screen.h"
 
+/*GLOBAL FUNCTIONS*/
 void NLF_screen_init()
 {
 	int flags;
@@ -80,7 +81,7 @@ void NLF_screen_init()
 		exit(aux);
 	}else{
 		displayInUse = 0;
-		printf("\n\t%d Displays avaliable, piking the number %d as pattern\n", aux, displayInUse + 1); //UATI??? VÊ O QUE BOSTA É ISSO
+		printf("\n\t%d Displays avaliable, piking the number %d as pattern\n", aux, displayInUse + 1);
 	}
 
 	displayInfoUnknown = NLF_False;
@@ -225,6 +226,7 @@ void NLF_screen_init()
 
 void NLF_screen_quit()
 {
+	NLF_screen_destroy();
 	SDL_DestroyWindow(window);
 	SDL_DestroyRenderer(window_rederer);
 	IMG_Quit();
@@ -378,7 +380,7 @@ unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned sh
 			printf("Could not craete screen's texture\n");
 			printf("Out of memory\n");
 			NLF_error_set_flag(NLF_ErrorInsufficientMemory, 1, "Out of memory when creating new screen's texture");
-			//remeber calling the function to remove this screen. //TO DO
+			NLF_screen_remove(stemp->position);
 			ret = 0;
 		}else{
 
@@ -387,3 +389,69 @@ unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned sh
 
 	return ret;
 }
+
+void NLF_screen_remove(short int position)
+{
+/*
+	arguments:
+		position - the place of the screen to remove
+		NOTE.: pass -1 as 'position' and the last screen will be removed
+		NOTE².: if there is not a 'position' screen of if position is 0, this function won't do nothing but cosuming process
+*/
+	NLF_Screen *ps, *psant;
+	short int aux;
+
+	ps = screens;
+	psant = screens;
+	if(position > 0)
+	{
+		//fiding the given positon
+		for(aux = 1; aux < position && ps != NULL; aux++)
+		{
+			psant = ps;
+			ps = ps->next;
+		}
+	}else if(position == -1)
+	{
+		//fiding the last position
+		while(ps->next != NULL)
+		{
+			psant = ps;
+			ps = ps->next;
+		}
+		aux = position;
+	}
+
+	if(position != 0)
+	{
+		//removing the found position
+		if(aux == position && ps != NULL)
+		{
+			if(psant == screens)
+				screens = psant->next;
+			else
+				psant->next = ps->next;
+			free(ps);
+		}
+
+		//fixing the positions
+		for(ps = psant->next; ps != NULL; ps = ps->next)
+		{
+			ps->position--;
+		}
+	}
+}
+/******************/
+
+/*LOCAL FUNTIONS*/
+static void NLF_screen_destroy()
+{
+	NLF_Screen *ps;
+	for(ps = screens; ps != NULL;)
+	{
+		screens = ps->next;
+		free(ps);
+		ps = screens;
+	}
+}
+/****************/

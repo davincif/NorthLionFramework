@@ -63,11 +63,11 @@ static unsigned short int idealFPS; //the FPS that the system should be operatin
 void NLF_screen_init();
 void NLF_screen_quit();
 unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned short int x, unsigned short int y, unsigned short int w, unsigned short int h, NLF_Alignment vAlign, NLF_Alignment hAlign, NLF_bool isStatic);
-// NLF_screen_remove //TO_DO
+void NLF_screen_remove(short int position);
 /******************/
 
 /*LOCAL FUNTIONS*/
-//static NLF_screen_destroy //TO_DO
+static void NLF_screen_destroy();
 /****************/
 
 #endif
