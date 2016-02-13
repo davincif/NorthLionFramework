@@ -26,11 +26,8 @@ typedef NLF_Rect NLF_Camera;
 typedef struct NLF_Screen
 {
 	SDL_Texture *scene;
-	unsigned short int x;
-	unsigned short int y;
-	unsigned short int w;
-	unsigned short int h;
-	unsigned short int position;
+	NLF_Rect dimetions; //an screen may the larger then the window
+	unsigned short int position; //position of the windows between the other screens
 	NLF_Alignment vAlign;
 	NLF_Alignment hAlign;
 	struct NLF_Screen *next;
@@ -38,9 +35,9 @@ typedef struct NLF_Screen
 /****************/
 
 /*GLOBAL VARIABLES*/
-NLF_Camera camera;
 
 //for internal funcionality only
+static NLF_Camera camera; //defines the global coodinate system, wich the (0,0), width and height are the same of game window
 static SDL_Renderer *window_rederer;
 static SDL_Window *window;
 static SDL_RendererInfo rendererInfo;
@@ -64,6 +61,13 @@ void NLF_screen_init();
 void NLF_screen_quit();
 unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned short int x, unsigned short int y, unsigned short int w, unsigned short int h, NLF_Alignment vAlign, NLF_Alignment hAlign, NLF_bool isStatic);
 void NLF_screen_remove(short int position);
+void NLF_screen_print();
+void NLF_camera_move(int plusx, int plusy);
+void NLF_camera_resize(int x, int y, int w, int h);
+void NLF_camera_add_size(int plusw, int plush);
+void NLF_camera_setPosition(int newx, int newy);
+void NLF_camera_realign(NLF_Alignment vAlignment, NLF_Alignment hAlignment);
+void NLF_camera_reset();
 /******************/
 
 /*LOCAL FUNTIONS*/

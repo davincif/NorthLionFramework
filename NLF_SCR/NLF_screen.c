@@ -310,33 +310,33 @@ unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned sh
 		SDL_GetWindowSize(window, &ww, &hw);
 		if(w == 0 || h == 0)
 		{
-			stemp->x = 0;
-			stemp->y = 0;
+			stemp->dimetions.x = 0;
+			stemp->dimetions.y = 0;
 			stemp->vAlign = NLF_AlignmentNone;
 			stemp->hAlign = NLF_AlignmentNone;
-			stemp->w = ww;
-			stemp->h = hw;
+			stemp->dimetions.w = ww;
+			stemp->dimetions.h = hw;
 		}else{
-			stemp->w = w;
-			stemp->h = h;
+			stemp->dimetions.w = w;
+			stemp->dimetions.h = h;
 			if(vAlign == 0)
 			{
-				stemp->x = x;
+				stemp->dimetions.x = x;
 				stemp->vAlign = NLF_AlignmentNone;
 			}else{
 				stemp->vAlign = vAlign;
 				switch(vAlign)
 				{
 					case NLF_AlignmentCenter:
-						stemp->y = (hw - stemp->h) / 2;
+						stemp->dimetions.y = (hw - stemp->dimetions.h) / 2;
 						break;
 
 					case NLF_AlignmentUp:
-						stemp->y = 0;
+						stemp->dimetions.y = 0;
 						break;
 
 					case  NLF_AlignmentDown:
-						stemp->y = hw - stemp->h;
+						stemp->dimetions.y = hw - stemp->dimetions.h;
 						break;
 
 					//Right and Left are not valid alignment for height
@@ -346,22 +346,22 @@ unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned sh
 			}
 			if(hAlign == 0)
 			{
-				stemp->y = y;
+				stemp->dimetions.y = y;
 				stemp->hAlign = NLF_AlignmentNone;
 			}else{
 				stemp->hAlign = hAlign;
 				switch(hAlign)
 				{
 					case NLF_AlignmentCenter:
-						stemp->x = (ww - stemp->w) / 2;
+						stemp->dimetions.x = (ww - stemp->dimetions.w) / 2;
 						break;
 
 					case NLF_AlignmentRight:
-						stemp->x = ww - stemp->w;
+						stemp->dimetions.x = ww - stemp->dimetions.w;
 						break;
 
 					case  NLF_AlignmentLeft:
-						stemp->x = 0;
+						stemp->dimetions.x = 0;
 						break;
 
 					//Up and Down are not valid alignment for width
@@ -369,12 +369,12 @@ unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned sh
 						stemp->vAlign = NLF_AlignmentNone;
 				}
 			}
-			stemp->w = w;
-			stemp->h = h;
+			stemp->dimetions.w = w;
+			stemp->dimetions.h = h;
 		}
 
 		//creating the SDL_Texutre
-		stemp->scene = SDL_CreateTexture(window_rederer, SDL_PIXELFORMAT_UNKNOWN, (isStatic == NLF_True) ? SDL_TEXTUREACCESS_STATIC : SDL_TEXTUREACCESS_STREAMING, stemp->w, stemp->h);
+		stemp->scene = SDL_CreateTexture(window_rederer, SDL_PIXELFORMAT_UNKNOWN, (isStatic == NLF_True) ? SDL_TEXTUREACCESS_STATIC : SDL_TEXTUREACCESS_STREAMING, stemp->dimetions.w, stemp->dimetions.h);
 		if(stemp->scene == NULL)
 		{
 			printf("Could not craete screen's texture\n");
@@ -431,6 +431,7 @@ void NLF_screen_remove(short int position)
 				screens = psant->next;
 			else
 				psant->next = ps->next;
+			SDL_DestroyTexture(ps->scene);
 			free(ps);
 		}
 
@@ -441,6 +442,129 @@ void NLF_screen_remove(short int position)
 		}
 	}
 }
+
+void NLF_screen_print()
+{
+/*
+	this function will:
+		print all screens in the display
+*/
+	NLF_Screen *ps;
+	SDL_RenderClear(window_rederer);
+	for(ps = screens; ps != NULL; ps = ps->next)
+	{
+		SDL_RenderCopy(window_rederer, ps->scene, (const SDL_Rect*) &camera, (const SDL_Rect*) &ps->dimetions);
+	}
+	SDL_RenderPresent(window_rederer);
+}
+
+void NLF_camera_move(int plusx, int plusy)
+{
+/*
+	arguments:
+		plusx - the number to be added (or subtracted) from the camera's x position
+		plusy - the number to be added (or subtracted) from the camera's y position
+	This fuction will:
+		just move the camera. Related to the windows OF COURSE
+*/
+	camera.x += plusx;
+	camera.y += plusy;
+}
+
+void NLF_camera_resize(int x, int y, int w, int h)
+{
+/*
+	arguments:
+		x,y,w,h - the new x, y, width and height of the camera
+*/
+		camera.x = x;
+		camera.y = y;
+		camera.w = w;
+		camera.h = h;
+}
+
+void NLF_camera_add_size(int plusw, int plush)
+{
+/*
+	arguments:
+		plusx - the number to be added (or subtracted) from the camera's width size
+		plusy - the number to be added (or subtracted) from the camera's height size
+	This fuction will:
+		just change the camera size
+*/
+}
+
+void NLF_camera_setPosition(int newx, int newy)
+{
+/*
+	arguments:
+		newx, newy - the new x and y of the camera
+	This fuction will:
+		just reposition the camera
+*/
+		camera.x = newx;
+		camera.y = newy;
+}
+
+void NLF_camera_realign(NLF_Alignment vAlignment, NLF_Alignment hAlignment)
+{
+/*
+	arguments:
+		vAlignment - the new camera's vertical alignment
+		hAlignment - the new camera's horizontal alignment
+		NOTE.: both related to the windows, OF COURSE
+		NOTE².: NLF_AlignmentRight and NLF_AlignmentLeft are ignored for vAligment, analogously, NLF_AlignmentUp and NLF_AlignmentDown are for hAlignment
+	This fuction will:
+		realing the camera
+*/
+		int ww, hw;
+
+		SDL_GetWindowSize(window, &ww, &hw);
+
+		switch(vAlignment)
+		{
+			case NLF_AlignmentCenter:
+				camera.y = (hw - camera.h) / 2;
+				break;
+
+			case NLF_AlignmentUp:
+				camera.y = 0;
+				break;
+
+			case NLF_AlignmentDown:
+				camera.y = hw - camera.h;
+				break;
+		}
+
+		switch(hAlignment)
+		{
+			case NLF_AlignmentCenter:
+				camera.x = (ww - camera.w) / 2;
+				break;
+
+			case NLF_AlignmentRight:
+				camera.x = ww - camera.w;
+				break;
+
+			case NLF_AlignmentLeft:
+				camera.x = 0;
+				break;
+		}
+}
+
+void NLF_camera_reset()
+{
+/*
+	arguments:
+	This fuction will:
+*/
+	int ww, wh;
+
+	camera.x = 0;
+	camera.y = 0;
+	SDL_GetWindowSize(window, &camera.w, &camera.h);
+}
+
 /******************/
 
 /*LOCAL FUNTIONS*/
@@ -450,6 +574,7 @@ static void NLF_screen_destroy()
 	for(ps = screens; ps != NULL;)
 	{
 		screens = ps->next;
+		SDL_DestroyTexture(ps->scene);
 		free(ps);
 		ps = screens;
 	}

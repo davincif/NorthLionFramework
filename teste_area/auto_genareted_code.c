@@ -38,6 +38,8 @@ int main(int arg, char *argc[])
 	NLF_screen_remove(-1);
 	//TESTE_RUN_LIST();
 
+	NLF_screen_print();
+
 	NLF_quit();
 
 	return 0;
