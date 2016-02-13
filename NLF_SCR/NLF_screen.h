@@ -2,6 +2,8 @@
 #define NLF_SCREEN_H
 
 /*CLIBRARIES*/
+#include <stdio.h>
+#include <stdlib.h>
 /************/
 
 /*EXTERNAL LIBRARIES*/
@@ -14,12 +16,23 @@
 /********************/
 
 /*ENUM AND TYPES*/
+typedef enum NLF_Alignment
+{
+	NLF_AlignmentNone, NLF_AlignmentCenter, NLF_AlignmentRight, NLF_AlignmentLeft, NLF_AlignmentUp, NLF_AlignmentDown, NLF_AlignmentToken
+}NLF_Alignment;
+
 typedef NLF_Rect NLF_Camera;
 
 typedef struct NLF_Screen
 {
 	SDL_Texture *scene;
+	unsigned short int x;
+	unsigned short int y;
+	unsigned short int w;
+	unsigned short int h;
 	unsigned short int position;
+	NLF_Alignment vAlign;
+	NLF_Alignment hAlign;
 	struct NLF_Screen *next;
 } NLF_Screen;
 /****************/
@@ -49,9 +62,12 @@ static unsigned short int idealFPS; //the FPS that the system should be operatin
 /*GLOBAL FUNCTIONS*/
 void NLF_screen_init();
 void NLF_screen_quit();
+unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned short int x, unsigned short int y, unsigned short int w, unsigned short int h, NLF_Alignment vAlign, NLF_Alignment hAlign, NLF_bool isStatic);
+// NLF_screen_remove //TO_DO
 /******************/
 
 /*LOCAL FUNTIONS*/
+//static NLF_screen_destroy //TO_DO
 /****************/
 
 #endif

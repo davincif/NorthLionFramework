@@ -3,7 +3,7 @@
 
 typedef enum NLF_ErrorOrigin
 {
-	NLF_ErrorOriginNome, NLF_ErrorOriginSDL, NLF_ErrorOriginC, NLF_ErrorOriginNLF
+	NLF_ErrorOriginNome, NLF_ErrorOriginSDL, NLF_ErrorOriginC, NLF_ErrorOriginNLF, NLF_ErrorOriginToken
 } NLF_ErrorOrigin;
 
 typedef enum NLF_Error

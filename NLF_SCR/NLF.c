@@ -11,7 +11,7 @@ void NLF_init()
 
 	printf("\tScreen module... ");
 	NLF_screen_init();
-	printf("\tdone\n");
+	printf("done\n");
 
 	printf("NLF Initialized!\n\n");
 }
