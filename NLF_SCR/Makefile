@@ -26,7 +26,7 @@ build: NLF.o
 	cp ./*.o $(COMPILEPATH)
 	$(CC) -shared $(CFLAGS) $(SDL2INCLUDES) $(SDL2LIBS) $(SDLIMAGE2INCLUDES) $(SDLIMAGE2LIBS) $(COMPILEPATH)*.o -o $(COMPILEPATH)libNLF.so
 
-NLF.o: NLF_osservice.o NLF_error.o NLF_event.o NLF_screen.o NLF.h.gch
+NLF.o: NLF_osservice.o NLF_error.o NLF_screen.o NLF.h.gch
 	$(CC) $(CFLAGS) $(SDL2INCLUDES) $(SDLIMAGE2INCLUDES) -fPIC -c NLF.c
 
 NLF.h.gch: NLF.h
@@ -41,11 +41,6 @@ NLF_error.o: NLF_error.h.gch
 	$(CC) $(CFLAGS) $(SDL2INCLUDES) -fPIC -c NLF_error.c
 NLF_error.h.gch:
 	$(CC) $(CFLAGS) $(SDL2INCLUDES) NLF_error.h
-
-NLF_event.o: NLF_event.h.gch
-	$(CC) $(CFLAGS) $(SDL2INCLUDES) -fPIC -c NLF_event.c
-NLF_event.h.gch:
-	$(CC) $(CFLAGS) $(SDL2INCLUDES) NLF_event.h	
 
 NLF_screen.o: NLF_screen.h.gch
 	$(CC) $(CFLAGS) $(SDL2INCLUDES) $(SDLIMAGE2INCLUDES) -fPIC -c NLF_screen.c
