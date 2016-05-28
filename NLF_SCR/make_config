@@ -35,9 +35,10 @@ NLF_screen.h.gch:
 clean-build:
 	rm -f -v $(COMPILEPATH)*.o
 
-clean-hard clean-all:
+clean-all:
 	rm -f -v ./*.o ./*.h.gch
 	rm -f -v $(COMPILEPATH)*.o $(COMPILEPATH)*.so
 
-clean-soft clean-all-but-so:
+clean-soft:
 	rm -f -v ./*.o ./*.h.gch
+	rm -f -v $(COMPILEPATH)*.o

@@ -1,72 +1,146 @@
 #!/bin/bash
 
-SOURCEBUILDER="ThirdPartySource"
+ThirdSRC="ThirdPartySource"
 LUA="lua-5.3.2"
 SDL2="SDL2-2.0.4"
 SDL2_IMAGE="SDL2_image-2.0.1"
 TRASHFILE="TRASHFILE.trash"
 NLFBUILDPATH="BINARIES"
+WINSTUFF="4windows"
+SDL2_WIN32="$WINSTUFF/SDL2-2.0.4-win32-x86.zip"
+SDL2_WIN64="$WINSTUFF/SDL2-2.0.4-win32-x64.zip"
+SDL2_IMAGE_WIN32="$WINSTUFF/SDL2_image-2.0.1-win32-x86.zip"
+SDL2_IMAGE_WIN64="$WINSTUFF/SDL2_image-2.0.1-win32-x64.zip"
 
-##CHECKING SOURCE FILE EXISTENCE##
-if test ! -e "$SOURCEBUILDER/$LUA.tar.gz"; then
-	echo "lua source '$SOURCEBUILDER/$LUA.tar.gz' not found"
+## CHECKING SOURCE FILE EXISTENCE##
+if ! [ -e "$ThirdSRC/$LUA.tar.gz" ]; then
+	echo "lua source '$ThirdSRC/$LUA.tar.gz' not found"
 	echo "Aborting..."
 	exit 1
 fi
 
-if test ! -e "$SOURCEBUILDER/$SDL2.tar.gz"; then
-	echo "SDL2 source '$SOURCEBUILDER/$SDL2.tar.gz' not found"
+if ! [ -e "$ThirdSRC/$SDL2.tar.gz" ]; then
+	echo "SDL2 source '$ThirdSRC/$SDL2.tar.gz' not found"
 	echo "Aborting..."
 	exit 1
 fi
 
-if test ! -e "$SOURCEBUILDER/$SDL2_IMAGE.tar.gz"; then
+if ! [ -e "$ThirdSRC/$SDL2_IMAGE.tar.gz" ]; then
 	echo "SDL2_image source '$SDL2_IMAGE.tar.gz' not found"
 	echo "Aborting..."
 	exit 1
 fi
 
-if test ! -d "$NLFBUILDPATH"; then
+if ! [ -e "$ThirdSRC/$SDL2_WIN32" ]; then
+	echo "SDL2 lib for WIN32 '$ThirdSRC/$SDL2_WIN32' not found"
+	echo "Aborting..."
+	exit 1
+fi
+
+if ! [ -e "$ThirdSRC/$SDL2_WIN64" ]; then
+	echo "SDL2 lib for WIN64'$ThirdSRC/$SDL2_WIN64' not found"
+	echo "Aborting..."
+	exit 1
+fi
+
+if ! [ -e "$ThirdSRC/$SDL2_IMAGE_WIN32" ]; then
+	echo "SDL2_IMAGE lib for WIN '$ThirdSRC/$SDL2_IMAGE_WIN32' not found"
+	echo "Aborting..."
+	exit 1
+fi
+
+if ! [ -e "$ThirdSRC/$SDL2_IMAGE_WIN64" ]; then
+	echo "SDL2_IMAGE lib for WIN '$ThirdSRC/$SDL2_IMAGE_WIN64' not found"
+	echo "Aborting..."
+	exit 1
+fi
+
+## CHECKING FOR NEEDED PATHS
+if ! [ -d "$NLFBUILDPATH" ]; then
 	mkdir $NLFBUILDPATH
 	echo "'$NLFBUILDPATH/' path not found. Created."
 fi
 
+if ! [ -d "$NLFBUILDPATH/$WINSTUFF" ]; then
+	mkdir $NLFBUILDPATH/$WINSTUFF
+	echo "'$NLFBUILDPATH/$WINSTUFF/' path not found. Created."
+fi
 
-#checking for required command
+if ! [ -d "$NLFBUILDPATH/$WINSTUFF/SDL2" ]; then
+	mkdir $NLFBUILDPATH/$WINSTUFF/SDL2
+	echo "'$NLFBUILDPATH/$WINSTUFF/SDL2/' path not found. Created."
+fi
+
+if ! [ -d "$NLFBUILDPATH/$WINSTUFF/SDL2/32" ]; then
+	mkdir $NLFBUILDPATH/$WINSTUFF/SDL2/32
+	echo "'$NLFBUILDPATH/$WINSTUFF/SDL2/32/' path not found. Created."
+fi
+
+if ! [ -d "$NLFBUILDPATH/$WINSTUFF/SDL2/64" ]; then
+	mkdir $NLFBUILDPATH/$WINSTUFF/SDL2/64
+	echo "'$NLFBUILDPATH/$WINSTUFF/SDL2/64/' path not found. Created."
+fi
+
+if ! [ -d "$NLFBUILDPATH/$WINSTUFF/SDL2_image" ]; then
+	mkdir $NLFBUILDPATH/$WINSTUFF/SDL2_image
+	echo "'$NLFBUILDPATH/$WINSTUFF/SDL2_image/' path not found. Created."
+fi
+
+if ! [ -d "$NLFBUILDPATH/$WINSTUFF/SDL2_image/32" ]; then
+	mkdir $NLFBUILDPATH/$WINSTUFF/SDL2_image/32
+	echo "'$NLFBUILDPATH/$WINSTUFF/SDL2_image/32/' path not found. Created."
+fi
+
+if ! [ -d "$NLFBUILDPATH/$WINSTUFF/SDL2_image/64" ]; then
+	mkdir $NLFBUILDPATH/$WINSTUFF/SDL2_image/64
+	echo "'$NLFBUILDPATH/$WINSTUFF/SDL2_image/64/' path not found. Created."
+fi
+
+
+## CHECKING FOR REQUIRED COMMAND
 if ! hash tar; then
-	echo "'tar' command found, but it's needed for building the framework. Please, install the 'tar' command before continue"
-	echo "Aborting..."
-	exit 2
+	echo "'tar' command found, installing..."
+	sudo apt-get install tar
 else
 	echo "'tar' command is present"
 fi
 
+if ! hash unzip; then
+	echo "'unzip' command found, installing..."
+	sudo apt-get install unzip
+else
+	echo "'unzip' command is present"
+fi
+
 if (! hash g++) || (! hash gcc); then
+	echo "g++ or gcc not found, installing..."
 	sudo apt-get install build-essential
 	sudo apt-get update
 	sudo apt-get upgrade
 else
-	echo "gcc and g++ command is present"
+	echo "gcc and g++ command are present"
 fi
 
 
+# COMPILING DEPENDENCIES
+printf "\n\nCompiling dependencies...\n"
 
-#lua making
-cd $SOURCEBUILDER
+##LUA MAKING
+cd $ThirdSRC/
 sudo apt-get install libreadline-dev
 tar -zvxf "$LUA.tar.gz" > $TRASHFILE
-cd $LUA
+cd $LUA/
 make linux
 sudo make install
 mv "src/" "lua/"
 mv "lua/" "../../"
-cd ..
+cd ../
 rm -r $LUA
 
-#SDL2 making
+##SDL2 MAKING
 tar -zvxf "$SDL2.tar.gz" > $TRASHFILE
 sudo apt-get install libsdl-dev libxext-dev
-cd $SDL2
+cd $SDL2/
 mkdir "build"
 cd "build/"
 .././configure
@@ -74,27 +148,40 @@ make
 sudo make install
 mkdir "../../../SDL2"
 mv "build/" "../../../SDL2/"
-cd ..
+cd ../
 mv "include/" "../../SDL2/"
-cd ..
+cd ../
 rm -r $SDL2
 
-#SDL2_image making
+##SDL2_image MAKING
 tar -zvxf "$SDL2_IMAGE.tar.gz" > $TRASHFILE
 sudo apt-get install libsdl2-gfx-1.0-0 libsdl2-gfx-dbg libsdl2-gfx-dev libsdl2-gfx-doc libsdl2-image-dbg libsdl2-image-dev libsdl2-mixer-dbg libsdl2-mixer-dev libsdl2-net-dbg libsdl2-net-dev libsdl2-ttf-dbg libsdl2-ttf-dev libsdl2-2.0-0 libsdl2-dbg libsdl2-dev libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-net-2.0-0 libsdl2-ttf-2.0-0
 sudo apt-get install libxml2-dev libpng12-dev libjpeg8-dev libwebp-dev libtiff5-dev
-cd $SDL2_IMAGE
+cd $SDL2_IMAGE/
 ./configure
 make
 sudo make install
-cd ..
+cd ../
 mv "$SDL2_IMAGE/" "SDL_image/"
 mv "SDL_image/" "../SDL2/"
 rm $TRASHFILE
-cd ..
+cd ../
 
-#lib installing
+##LIB INSTALLING
 mkdir "SDL2/lib/"
 cp /usr/local/lib/*SDL2* "SDL2/lib/"
+
+
+echo "unpacking libs for windows crosscompilation"
+#LINUX TO WINDOWS LIB CROSSCOMPILING INSTALLING
+unzip $ThirdSRC/$SDL2_WIN32 -d $NLFBUILDPATH/$WINSTUFF/SDL2/32 > $TRASHFILE
+rm $NLFBUILDPATH/$WINSTUFF/SDL2/32/*.txt
+unzip $ThirdSRC/$SDL2_WIN64 -d $NLFBUILDPATH/$WINSTUFF/SDL2/64 > $TRASHFILE
+rm $NLFBUILDPATH/$WINSTUFF/SDL2/64/*.txt
+unzip $ThirdSRC/$SDL2_IMAGE_WIN32 -d $NLFBUILDPATH/$WINSTUFF/SDL2_image/32 > $TRASHFILE
+rm $NLFBUILDPATH/$WINSTUFF/SDL2_image/32/*.txt
+unzip $ThirdSRC/$SDL2_IMAGE_WIN64 -d $NLFBUILDPATH/$WINSTUFF/SDL2_image/64 > $TRASHFILE
+rm $NLFBUILDPATH/$WINSTUFF/SDL2_image/64/*.txt
+rm $TRASHFILE
 
 echo "*done*"

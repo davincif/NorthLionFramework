@@ -5,14 +5,18 @@ config_help() {
 	echo "configure file help
 You need to provide a compiling flag to this configure file. As below
 
+-h or --help
+	show this help (thats not a compiling flag ^^')
 -l2l or --linux2linux
 	configure a Makefile to be built in linux OS
 -l2w or --linux2windows
-	configure a Makefile for linux to be built in Windows OS"
+	configure a Makefile for linux to be built in Windows OS
+-c or --clean
+	clean whatever the configure file had created"
 }
 
-make_for_linux() {
-	echo "Makefile for linux"
+make_for_linux(){
+	echo "Makefile for linux..."
 	printf "#the compiler
 CC = gcc
 
@@ -65,6 +69,11 @@ SDLIMAGE2LIBS =" >> Makefile
 COMPILEPATH = $DS(PREPATH)/BINARIES/\n" >> Makefile
 
 	cat make_config >> Makefile
+	echo "*done*"
+}
+
+clean_sutff(){
+	rm "Makefile"
 }
 ###############
 
@@ -77,19 +86,25 @@ fi
 
 for arg in "$@"; do
 	case "$@" in
-	-l2l)
-	--linux2linux)
-		make_for_linux
-	;;
+		-l2l | --linux2linux )
+			make_for_linux
+		;;
 
-	-l2w)
-	--linux2windows)
-		echo "pera vissi"
-	;;
+		-l2w | --linux2windows )
+			echo "in progress"
+		;;
 
-	*)
-		echo "Not recognized option"
-		config_help
-	;;
+		-c | --clean )
+			clean_sutff
+		;;
+
+		-h | --help )
+			config_help
+		;;
+
+		*)
+			echo "Not recognized option"
+			config_help
+		;;
 	esac
 done
