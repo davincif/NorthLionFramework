@@ -1,0 +1,43 @@
+
+
+
+#Build options
+
+build: NLF.o
+	cp ./*.o $(COMPILEPATH)
+	$(CC) $(CFLAGS) -shared $(COMPILEPATH)*.o $(SDL2LIBS) $(SDLIMAGE2LIBS) -o $(COMPILEPATH)libNLF.dll
+
+NLF.o: NLF_osservice.o NLF_error.o NLF_screen.o NLF.h.gch
+	$(CC) -c -DBUILD_DLL $(CFLAGS) $(SDL2INCLUDES) $(SDLIMAGE2INCLUDES) NLF.c
+NLF.h.gch: NLF.h
+	$(CC) $(CFLAGS) $(SDL2INCLUDES) $(SDLIMAGE2INCLUDES) NLF.h
+
+NLF_osservice.o: NLF_osservice.h.gch
+	$(CC) -c -DBUILD_DLL $(CFLAGS) $(SDL2INCLUDES) NLF_osservice.c
+NLF_osservice.h.gch:
+	$(CC) $(CFLAGS) $(SDL2INCLUDES) NLF_osservice.h
+
+NLF_error.o: NLF_error.h.gch
+	$(CC) -c -DBUILD_DLL $(CFLAGS) $(SDL2INCLUDES) NLF_error.c
+NLF_error.h.gch:
+	$(CC) $(CFLAGS) $(SDL2INCLUDES) NLF_error.h
+
+NLF_screen.o: NLF_screen.h.gch
+	$(CC) -c -DBUILD_DLL $(CFLAGS) $(SDL2INCLUDES) $(SDLIMAGE2INCLUDES) NLF_screen.c
+NLF_screen.h.gch:
+	$(CC) $(CFLAGS) $(SDL2INCLUDES) $(SDLIMAGE2INCLUDES) NLF_screen.h
+
+
+
+#cleaning options
+
+clean-build:
+	rm -f -v $(COMPILEPATH)*.o
+
+clean-all:
+	rm -f -v ./*.o ./*.h.gch
+	rm -f -v $(COMPILEPATH)*.o $(COMPILEPATH)*.dll
+
+clean-soft:
+	rm -f -v ./*.o ./*.h.gch
+	rm -f -v $(COMPILEPATH)*.o

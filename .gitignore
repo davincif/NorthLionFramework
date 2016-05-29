@@ -6,5 +6,7 @@
 *.h.gch
 *.so
 /teste_area/auto_genareted_code
+/teste_area/4win
 /NLF_SCR/Makefile
 /BINARIES
+*.exe

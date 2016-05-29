@@ -3,19 +3,11 @@
 
 /*CLIBRARIES*/
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 /************/
-
-/*EXTERNAL LIBRARIES*/
-#include "SDL.h"
-/*********************/
-
-/*INTERNAL LIBRARIES*/
-#include "NLF_error_types.h"
-/********************/
 
 /*MARCOS*/
 #if defined(__WIN64__) || defined(__WIN64) || defined(WIN64)
@@ -57,6 +49,14 @@
 	#define NLF_OS_BITS_UNIDENTIFIED
 #endif
 /********/
+
+/*EXTERNAL LIBRARIES*/
+#include "SDL.h"
+/*********************/
+
+/*INTERNAL LIBRARIES*/
+#include "NLF_error_types.h"
+/********************/
 
 /*ENUM AND TYPES*/
 typedef SDL_Rect NLF_Rect;

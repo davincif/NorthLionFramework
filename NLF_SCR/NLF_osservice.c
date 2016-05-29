@@ -1,4 +1,6 @@
 #include "NLF_osservice.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 
 NLF_bool NLF_OSS_check_directory_existence(const char *pathname)
 {
@@ -40,60 +42,64 @@ NLF_Error NLF_OSS_create_directory(const char *directory, const char *permission
 		3 = 2+1 (write/execute)
 		2 = 2 (write)
 		1 = 1 (execute)
+	PS.: in windows this argument is just ignored.
 
 		if the Argument is NULL, it will just be created with 777 status
 */
 	short int i, auxi;
 	char *directoryAux = NULL;
 	NLF_bool needChange = NLF_False;
-	mode_t openMode = 0;
 
-	/*SETTING/CHECKING PERMISSION CONSISTENCY*/
-	if(permission != NULL)
-	{
+	#ifndef NLF_OS_WINDOWS
+		mode_t openMode = 0;
+
+		/*SETTING/CHECKING PERMISSION CONSISTENCY*/
 		if(permission != NULL)
-		if(strlen(permission) != 3)
-			return NLF_ErrorBadArgument;
-
-		for(i = 0; i < 4; i++)
 		{
-			switch(permission[i])
+			if(permission != NULL)
+			if(strlen(permission) != 3)
+				return NLF_ErrorBadArgument;
+
+			for(i = 0; i < 4; i++)
 			{
-				case '7':
-					openMode = openMode | (i == 1 ? S_IRWXU : (i == 2 ? S_IRWXG : S_IRWXO));
-				break;
+				switch(permission[i])
+				{
+					case '7':
+						openMode = openMode | (i == 1 ? S_IRWXU : (i == 2 ? S_IRWXG : S_IRWXO));
+					break;
 
-				case '6':
-					openMode = openMode | (i == 1 ? S_IRUSR|S_IWUSR : (i == 2 ? S_IRGRP|S_IWGRP : S_IROTH|S_IWOTH));
-				break;
+					case '6':
+						openMode = openMode | (i == 1 ? S_IRUSR|S_IWUSR : (i == 2 ? S_IRGRP|S_IWGRP : S_IROTH|S_IWOTH));
+					break;
 
-				case '5':
-					openMode = openMode | (i == 1 ? S_IRUSR|S_IXUSR : (i == 2 ? S_IRGRP|S_IXGRP : S_IROTH|S_IXOTH));
-				break;
+					case '5':
+						openMode = openMode | (i == 1 ? S_IRUSR|S_IXUSR : (i == 2 ? S_IRGRP|S_IXGRP : S_IROTH|S_IXOTH));
+					break;
 
-				case '4':
-					openMode = openMode | (i == 1 ? S_IRUSR : (i == 2 ? S_IRGRP : S_IROTH));
-				break;
+					case '4':
+						openMode = openMode | (i == 1 ? S_IRUSR : (i == 2 ? S_IRGRP : S_IROTH));
+					break;
 
-				case '3':
-					openMode = openMode | (i == 1 ? S_IWUSR|S_IXUSR : (i == 2 ? S_IWGRP|S_IXGRP : S_IWOTH|S_IXOTH));
-				break;
+					case '3':
+						openMode = openMode | (i == 1 ? S_IWUSR|S_IXUSR : (i == 2 ? S_IWGRP|S_IXGRP : S_IWOTH|S_IXOTH));
+					break;
 
-				case '2':
-					openMode = openMode | (i == 1 ? S_IWUSR : (i == 2 ? S_IWGRP : S_IWOTH));
-				break;
+					case '2':
+						openMode = openMode | (i == 1 ? S_IWUSR : (i == 2 ? S_IWGRP : S_IWOTH));
+					break;
 
-				case '1':
-					openMode = openMode | (i == 1 ? S_IXUSR : (i == 2 ? S_IXGRP : S_IXOTH));
-				break;
+					case '1':
+						openMode = openMode | (i == 1 ? S_IXUSR : (i == 2 ? S_IXGRP : S_IXOTH));
+					break;
 
-				default:
-					return NLF_ErrorBadArgument;
+					default:
+						return NLF_ErrorBadArgument;
+				}
 			}
+		}else{
+			openMode = S_IRWXU|S_IRWXG|S_IRWXO; //"777" permission
 		}
-	}else{
-		openMode = S_IRWXU|S_IRWXG|S_IRWXO; //"777" permission
-	}
+	#endif
 
 	/*CHECKING DIRETORY PATH PORTABILITY*/
 	auxi = strlen(directory);
@@ -133,11 +139,14 @@ NLF_Error NLF_OSS_create_directory(const char *directory, const char *permission
 		strcpy(directoryAux, directory);
 	}
 
-	if(mkdir(directoryAux, openMode) != 0)
-		return NLF_ErrorCantCreateFile;
-
-	//now create the file and do the stuff
-
+	//now create the directory
+	#ifdef NLF_OS_WINDOWS
+		if(mkdir(directoryAux) != 0)
+			return NLF_ErrorCantCreateFile;
+	#else
+		if(mkdir(directoryAux, openMode) != 0)
+			return NLF_ErrorCantCreateFile;
+	#endif
 
 	//job done successfully
 	if(directoryAux != NULL)

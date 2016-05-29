@@ -9,7 +9,6 @@ build: NLF.o
 
 NLF.o: NLF_osservice.o NLF_error.o NLF_screen.o NLF.h.gch
 	$(CC) $(CFLAGS) $(SDL2INCLUDES) $(SDLIMAGE2INCLUDES) -fPIC -c NLF.c
-
 NLF.h.gch: NLF.h
 	$(CC) $(CFLAGS) $(SDL2INCLUDES) $(SDLIMAGE2INCLUDES) NLF.h
 

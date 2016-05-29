@@ -1,7 +1,12 @@
 #!/bin/bash
 
+###VARIABLES###
+DS="$" #Dolar Sign
+###############
+
 ###FUNCTIONS###
-config_help() {
+config_help()
+{
 	echo "configure file help
 You need to provide a compiling flag to this configure file. As below
 
@@ -15,7 +20,8 @@ You need to provide a compiling flag to this configure file. As below
 	clean whatever the configure file had created"
 }
 
-make_for_linux(){
+makerfile_l2l()
+{
 	echo "Makefile for linux..."
 	printf "#the compiler
 CC = gcc
@@ -72,12 +78,38 @@ COMPILEPATH = $DS(PREPATH)/BINARIES/\n" >> Makefile
 	echo "*done*"
 }
 
-clean_sutff(){
+makerfile_l2w()
+{
+	printf "#the compiler
+CC = i686-w64-mingw32-gcc
+
+#the standart ompilation flags of the project
+CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration
+
+#path to the folder's root, where the holy not build framework is. Relate to this Makefile
+PREPATH = ..
+
+#Path to the SDL, SDL_image and Lua includes and libs
+SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
+SDL2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2/64 -lmingw32 -lSDL2main -lSDL2
+SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
+SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2_image/64 -lSDL2_image
+#LUAINCLUDES = -I $DS(PREPATH)/lua/
+#LUALIB = -L $DS(PREPATH)/lua/ -llua -lm
+
+#Where to put the compiled program
+COMPILEPATH = $DS(PREPATH)/BINARIES/" > Makefile
+
+	cat make_config_win >> Makefile
+	echo "*done*"
+}
+
+clean_sutff()
+{
 	rm "Makefile"
 }
 ###############
 
-DS="$" #Dolar Sign
 
 if [ -z "$1" ]; then
 	config_help
@@ -87,11 +119,11 @@ fi
 for arg in "$@"; do
 	case "$@" in
 		-l2l | --linux2linux )
-			make_for_linux
+			makerfile_l2l
 		;;
 
 		-l2w | --linux2windows )
-			echo "in progress"
+			makerfile_l2w
 		;;
 
 		-c | --clean )
