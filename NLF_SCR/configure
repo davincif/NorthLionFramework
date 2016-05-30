@@ -2,13 +2,20 @@
 
 ###VARIABLES###
 DS="$" #Dolar Sign
+L2LCOMP=false
+L2WCOMP=false
+COMP32BITS=false
+COMP64BITS=false
+MACHINE_TYPE=`uname -m`
+SYSTEM_TYPE=`uname -o`
 ###############
 
 ###FUNCTIONS###
 config_help()
 {
 	echo "configure file help
-You need to provide a compiling flag to this configure file. As below
+You need to provide a compiling flag as below: a system and a bit one.
+Also, this script considers that you're on a GNU/linux 64bits machine.
 
 -h or --help
 	show this help (thats not a compiling flag ^^')
@@ -16,13 +23,25 @@ You need to provide a compiling flag to this configure file. As below
 	configure a Makefile to be built in linux OS
 -l2w or --linux2windows
 	configure a Makefile for linux to be built in Windows OS
+-32 or --32bits
+	compile for 32 bit systems
+-64 or --64bits
+	compile for 64 bit systems
 -c or --clean
 	clean whatever the configure file had created"
+
+	if [ ${MACHINE_TYPE} != 'x86_64' ]; then
+		echo "#WARNING: you're not in a 64-bit MACHINE"
+	fi
+
+	if [ ${SYSTEM_TYPE} != 'GNU/Linux' ]; then
+		echo "#WARNING: you're not in a GNU/Linux MACHINE"
+	fi
 }
 
 makerfile_l2l()
 {
-	echo "Makefile for linux..."
+	echo "Makefile for linux to linux $1 bits..."
 	printf "#the compiler
 CC = gcc
 
@@ -37,14 +56,12 @@ PREPATH = ..\n" > Makefile
 SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
 SDL2LIBS =" >> Makefile
 	for f in ../SDL2/lib/*.a; do
-		if ! [[ $f == *"_image"* ]]
-		then
+		if ! [[ $f = *"_image"* ]]; then
 			printf " $f" >> Makefile
 		fi
 	done
 	for f in ../SDL2/lib/*.so.*; do
-		if ! [[ $f == *"_image"* ]]
-		then
+		if ! [[ $f = *"_image"* ]]; then
 			printf " $f" >> Makefile
 		fi
 	done
@@ -54,14 +71,12 @@ SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
 SDLIMAGE2LIBS =" >> Makefile
 
 	for f in ../SDL2/lib/*.a; do
-		if [[ $f == *"_image"* ]]
-		then
+		if [[ $f = *"_image"* ]]; then
 			printf " $f" >> Makefile
 		fi
 	done
 	for f in ../SDL2/lib/*.so.*; do
-		if [[ $f == *"_image"* ]]
-		then
+		if [[ $f = *"_image"* ]]; then
 			printf " $f" >> Makefile
 		fi
 	done
@@ -80,10 +95,15 @@ COMPILEPATH = $DS(PREPATH)/BINARIES/\n" >> Makefile
 
 makerfile_l2w()
 {
-	printf "#the compiler
-CC = i686-w64-mingw32-gcc
+	echo "Makefile for linux to windows $1 bits..."
+	printf "#the compiler\n" > Makefile
+	if [ $1 = "64" ]; then
+		printf "CC = x86_64-w64-mingw32-gcc\n\n" > Makefile
+	elif [ $1 = "32" ]; then
+		printf "CC = i686-w64-mingw32-gcc\n\n" > Makefile
+	fi
 
-#the standart ompilation flags of the project
+	printf "#the standart ompilation flags of the project
 CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration
 
 #path to the folder's root, where the holy not build framework is. Relate to this Makefile
@@ -91,14 +111,14 @@ PREPATH = ..
 
 #Path to the SDL, SDL_image and Lua includes and libs
 SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
-SDL2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2/64 -lmingw32 -lSDL2main -lSDL2
+SDL2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2/$1 -lmingw32 -lSDL2main -lSDL2
 SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
-SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2_image/64 -lSDL2_image
+SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2_image/$1 -lSDL2_image
 #LUAINCLUDES = -I $DS(PREPATH)/lua/
 #LUALIB = -L $DS(PREPATH)/lua/ -llua -lm
 
 #Where to put the compiled program
-COMPILEPATH = $DS(PREPATH)/BINARIES/" > Makefile
+COMPILEPATH = $DS(PREPATH)/BINARIES/" >> Makefile
 
 	cat make_config_win >> Makefile
 	echo "*done*"
@@ -111,32 +131,96 @@ clean_sutff()
 ###############
 
 
+### CHECKING ARGUMENTS CONSISTENCY
 if [ -z "$1" ]; then
 	config_help
 	exit
 fi
 
-for arg in "$@"; do
-	case "$@" in
+for arg in $@; do
+	case $arg in
 		-l2l | --linux2linux )
-			makerfile_l2l
+			if [ "$L2WCOMP" = false ]; then
+				L2LCOMP=true
+			else
+				echo "error: Flag '$arg' given, but linux to windows compilation alredy required .-."
+				echo "Wait, what? \"This is madness!\""
+				exit
+			fi
 		;;
 
 		-l2w | --linux2windows )
-			makerfile_l2w
+			if [ "$L2LCOMP" = false ]; then
+				L2WCOMP=true
+			else
+				echo "error: Flag '$arg' given, but linux to linux compilation alredy required .-."
+				echo "Wait, what? \"This is madness!\""
+				exit
+			fi
+		;;
+
+		-32 | --32bits )
+			if [ "$COMP64BITS" = false ]; then
+				COMP32BITS=true
+			else
+				echo "error: Flag '$arg' given, but 64bits compilation alredy required .-."
+				echo "You have to chosse, but chosse wisely..."
+				exit
+			fi
+		;;
+
+		-64 | --64bits )
+			if [ "$COMP32BITS" = false ]; then
+				COMP64BITS=true
+			else
+				echo "error: Flag '$arg' given, but 64bits compilation alredy required .-."
+				echo "You have to chosse, but chosse wisely..."
+				exit
+			fi
 		;;
 
 		-c | --clean )
 			clean_sutff
+			exit
 		;;
 
 		-h | --help )
 			config_help
+			exit
 		;;
 
 		*)
 			echo "Not recognized option"
 			config_help
+			exit
 		;;
 	esac
 done
+
+if [[ ("$L2WCOMP" = false) && ("$L2LCOMP" = false) ]]; then
+	echo "error: missing linux2linux or linux2windows compilation flag"
+	echo "pick one, bro!"
+	exit
+fi
+
+if [[ ("$COMP64BITS" = false) && ("$COMP32BITS" = false) ]]; then
+	echo "error: missing flag 32 bits or 64 bits flag compilation recived"
+	echo "the red or the blue pill, pick one..."
+	exit
+fi
+
+## CONSTRUCTING THE CORRECT MAKEFILE
+if [ "$L2LCOMP" = true ]; then
+	if [ "$COMP64BITS" = true ]; then
+		makerfile_l2l "64"
+	else
+		#I've head that it's only needed to add -m32 to the Cflags =)
+		echo "sorry, still in progess"
+	fi
+elif [ "$L2WCOMP" = true ]; then
+	if [ "$COMP64BITS" = true ]; then
+		makerfile_l2w "64"
+	else
+		makerfile_l2w "32"
+	fi
+fi
