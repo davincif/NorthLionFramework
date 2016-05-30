@@ -1,7 +1,9 @@
 #!/bin/bash
-
+###VARIABLES###
 ThirdSRC="ThirdPartySource"
 LUA="lua-5.3.2"
+LUA_WIN32="lua-5.3.2_32bits"
+LUA_WIN64="lua-5.3.2_64bits"
 SDL2="SDL2-2.0.4"
 SDL2_IMAGE="SDL2_image-2.0.1"
 TRASHFILE="TRASHFILE.trash"
@@ -11,6 +13,55 @@ SDL2_WIN_file="SDL2-devel-2.0.4-mingw.tar.gz"
 SDL2_WIN="SDL2-2.0.4"
 SDL2_IMAGE_WIN_file="SDL2_image-devel-2.0.1-mingw.tar.gz"
 SDL2_IMAGE_WIN="SDL2_image-2.0.1"
+
+COMPILE=true
+INSTALL=true
+INSTALL_AFTER_COMPILE=true
+###############
+
+
+###FUNCTIONS###
+install_help()
+{
+	echo "#INSTALL FILE HELP
+--help
+	show this help
+--no-compiling
+	do not compile the third party sources
+--no-installing
+	do not install any missing programm
+--no-installing-built
+	do not install the third party sources after compiling it
+#CAUTION: only use theses flags only if you really know what you're doing, once it may to NLF do not work properly or do not work at all =/"
+}
+###############
+
+### CHECKING ARGUMENTS CONSISTENCY
+for arg in $@; do
+	case $arg in
+		--help )
+			install_help
+			exit
+		;;
+
+		--no-compiling )
+			COMPILE=false
+		;;
+
+		--no-installing )
+			INSTALL=false
+		;;
+
+		--no-installing-built )
+			INSTALL_AFTER_COMPILE=false
+		;;
+
+		*)
+			echo "argument '$arg' not recognized."
+			exit
+		;;
+	esac
+done
 
 ## CHECKING SOURCE FILE EXISTENCE
 if ! [ -e "$ThirdSRC/$LUA.tar.gz" ]; then
@@ -43,6 +94,18 @@ if ! [ -e "$ThirdSRC/$WINSTUFF/$SDL2_IMAGE_WIN_file" ]; then
 	exit 1
 fi
 
+if ! [ -e "$ThirdSRC/$WINSTUFF/$LUA_WIN32.tar.gz" ]; then
+	echo "Lua lib for WIN '$ThirdSRC/$WINSTUFF/$LUA_WIN32.tar.gz' not found"
+	echo "Aborting..."
+	exit 1
+fi
+
+if ! [ -e "$ThirdSRC/$WINSTUFF/$LUA_WIN64.tar.gz" ]; then
+	echo "Lua lib for WIN '$ThirdSRC/$WINSTUFF/$LUA_WIN64.tar.gz' not found"
+	echo "Aborting..."
+	exit 1
+fi
+
 ## CHECKING FOR NEEDED PATHS
 if ! [ -d "$NLFBUILDPATH" ]; then
 	mkdir $NLFBUILDPATH
@@ -51,76 +114,95 @@ fi
 
 
 ## CHECKING FOR REQUIRED COMMAND
-if ! hash tar; then
-	echo "'tar' command found, installing..."
-	sudo apt-get install tar
-else
-	echo "'tar' command is present"
-fi
+if [ $INSTALL = true ]; then
+	if ! hash tar; then
+		echo "'tar' command found, installing..."
+		sudo apt-get install tar
+	else
+		echo "'tar' command is present"
+	fi
 
-if (! hash g++) || (! hash gcc); then
-	echo "g++ or gcc not found, installing..."
-	sudo apt-get install build-essential
-	sudo apt-get update
-	sudo apt-get upgrade
-else
-	echo "gcc and g++ command are present"
+	if (! hash g++) || (! hash gcc); then
+		echo "g++ or gcc not found, installing..."
+		sudo apt-get install build-essential
+		sudo apt-get update
+		sudo apt-get upgrade
+	else
+		echo "gcc and g++ command are present"
+	fi
 fi
 
 
 ## COMPILING DEPENDENCIES
-printf "\n\nCompiling dependencies...\n"
+if [ $COMPILE = true ]; then
+	printf "\n\nCompiling dependencies...\n"
 
-## LUA MAKING
-cd $ThirdSRC/
-sudo apt-get install libreadline-dev
-tar -zvxf "$LUA.tar.gz" > $TRASHFILE
-cd $LUA/
-make linux
-sudo make install
-mv "src/" "lua/"
-mv "lua/" "../../"
-cd ../
-rm -r $LUA
+	## LUA MAKING
+	cd $ThirdSRC/
+	if [ $INSTALL = true ]; then
+		sudo apt-get install libreadline-dev
+	fi
+	tar -zvxf "$LUA.tar.gz" > $TRASHFILE
+	cd $LUA/
+	make linux
+	if [ $INSTALL_AFTER_COMPILE = true ]; then
+		sudo make install
+	fi
+	mv "src/" "lua/"
+	rm lua/*.o
+	mv "lua/" "../../"
+	cd ../
+	rm -r $LUA
 
-## SDL2 MAKING
-tar -zvxf "$SDL2.tar.gz" > $TRASHFILE
-sudo apt-get install libsdl-dev libxext-dev
-cd $SDL2/
-mkdir "build"
-cd "build/"
-.././configure
-make
-sudo make install
-mkdir "../../../SDL2"
-mv "build/" "../../../SDL2/"
-cd ../
-mv "include/" "../../SDL2/"
-cd ../
-rm -r $SDL2
+	## SDL2 MAKING
+	tar -zvxf "$SDL2.tar.gz" > $TRASHFILE
+	if [ $INSTALL = true ]; then
+		sudo apt-get install libsdl-dev libxext-dev
+	fi
+	cd $SDL2/
+	mkdir "build"
+	cd "build/"
+	.././configure
+	make
+	if [ $INSTALL_AFTER_COMPILE = true ]; then
+		sudo make install
+	fi
+	mkdir "../../../SDL2"
+	mv "build/" "../../../SDL2/"
+	cd ../
+	mv "include/" "../../SDL2/"
+	cd ../
+	rm -r $SDL2
 
-## SDL2_image MAKING
-tar -zvxf "$SDL2_IMAGE.tar.gz" > $TRASHFILE
-sudo apt-get install libsdl2-gfx-1.0-0 libsdl2-gfx-dbg libsdl2-gfx-dev libsdl2-gfx-doc libsdl2-image-dbg libsdl2-image-dev libsdl2-mixer-dbg libsdl2-mixer-dev libsdl2-net-dbg libsdl2-net-dev libsdl2-ttf-dbg libsdl2-ttf-dev libsdl2-2.0-0 libsdl2-dbg libsdl2-dev libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-net-2.0-0 libsdl2-ttf-2.0-0
-sudo apt-get install libxml2-dev libpng12-dev libjpeg8-dev libwebp-dev libtiff5-dev
-cd $SDL2_IMAGE/
-./configure
-make
-sudo make install
-cd ../
-mv "$SDL2_IMAGE/" "SDL_image/"
-mv "SDL_image/" "../SDL2/"
-rm $TRASHFILE
-cd ../
+	## SDL2_image MAKING
+	tar -zvxf "$SDL2_IMAGE.tar.gz" > $TRASHFILE
+	if [ $INSTALL = true ]; then
+		sudo apt-get install libsdl2-gfx-1.0-0 libsdl2-gfx-dbg libsdl2-gfx-dev libsdl2-gfx-doc libsdl2-image-dbg libsdl2-image-dev libsdl2-mixer-dbg libsdl2-mixer-dev libsdl2-net-dbg libsdl2-net-dev libsdl2-ttf-dbg libsdl2-ttf-dev libsdl2-2.0-0 libsdl2-dbg libsdl2-dev libsdl2-image-2.0-0 libsdl2-mixer-2.0-0 libsdl2-net-2.0-0 libsdl2-ttf-2.0-0
+		sudo apt-get install libxml2-dev libpng12-dev libjpeg8-dev libwebp-dev libtiff5-dev
+	fi
+	cd $SDL2_IMAGE/
+	./configure
+	make
+	if [ $INSTALL_AFTER_COMPILE = true ]; then
+		sudo make install
+	fi
+	cd ../
+	mv "$SDL2_IMAGE/" "SDL_image/"
+	mv "SDL_image/" "../SDL2/"
+	rm $TRASHFILE
+	cd ../
 
-## LIB INSTALLING
-mkdir "SDL2/lib/"
-cp /usr/local/lib/*SDL2* "SDL2/lib/"
+	## LIB INSTALLING
+	mkdir "SDL2/lib/"
+	cp /usr/local/lib/*SDL2* "SDL2/lib/"
+fi
 
 
 ## LINUX TO WINDOWS LIB CROSSCOMPILING INSTALLING
 echo "configuring crosscompilation for windows"
-sudo apt-get install mingw-w64
+if [ $INSTALL = true ]; then
+	sudo apt-get install mingw-w64
+fi
 mkdir "SDL2/$WINSTUFF"
 mkdir  "SDL2/$WINSTUFF/SDL2"
 mkdir  "SDL2/$WINSTUFF/SDL2/64"
@@ -146,8 +228,17 @@ mv $SDL2_IMAGE_WIN/i686-w64-mingw32/lib/*.a SDL2/4windows/SDL2_image/32
 mv $SDL2_IMAGE_WIN/i686-w64-mingw32/bin/*.dll SDL2/4windows/SDL2_image/32/bin
 mv $SDL2_IMAGE_WIN/x86_64-w64-mingw32/lib/*.a SDL2/4windows/SDL2_image/64
 mv $SDL2_IMAGE_WIN/x86_64-w64-mingw32/bin/*.dll SDL2/4windows/SDL2_image/64/bin
-echo "	**done**"
 rm -R $SDL2_IMAGE_WIN
+mkdir "lua/$WINSTUFF"
+tar -zvxf "$ThirdSRC/$WINSTUFF/$LUA_WIN32.tar.gz" > $TRASHFILE
+rm $LUA_WIN32/*.o $LUA_WIN32/*.h* $LUA_WIN32/*.c $LUA_WIN32/Makefile
+mv "$LUA_WIN32/" "32/"
+mv "32/" "lua/4windows/"
+tar -zvxf "$ThirdSRC/$WINSTUFF/$LUA_WIN64.tar.gz" > $TRASHFILE
+rm $LUA_WIN64/*.o $LUA_WIN64/*.h* $LUA_WIN64/*.c $LUA_WIN64/Makefile
+mv "$LUA_WIN64/" "64/"
+mv "64/" "lua/4windows/"
+echo "	**done**"
 rm $TRASHFILE
 
 echo "*done*"
