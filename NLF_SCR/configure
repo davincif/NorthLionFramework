@@ -51,35 +51,12 @@ CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implic
 #path to the folder's root, where the holy not build framework is. Relate to this Makefile
 PREPATH = ..\n" > Makefile
 
-		printf "
+	printf "
 #Path to the SDL, SDL_image and Lua includes and libs
 SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
-SDL2LIBS =" >> Makefile
-	for f in ../SDL2/lib/*.a; do
-		if ! [[ $f = *"_image"* ]]; then
-			printf " $f" >> Makefile
-		fi
-	done
-	for f in ../SDL2/lib/*.so.*; do
-		if ! [[ $f = *"_image"* ]]; then
-			printf " $f" >> Makefile
-		fi
-	done
-
-	printf "
+SDL2LIBS = -L$DS(PREPATH)/SDL2/lib/ -lSDL2 -lSDL2main -lSDL2_test
 SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
-SDLIMAGE2LIBS =" >> Makefile
-
-	for f in ../SDL2/lib/*.a; do
-		if [[ $f = *"_image"* ]]; then
-			printf " $f" >> Makefile
-		fi
-	done
-	for f in ../SDL2/lib/*.so.*; do
-		if [[ $f = *"_image"* ]]; then
-			printf " $f" >> Makefile
-		fi
-	done
+SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/lib/ -lSDL2_image" >> Makefile
 
 	printf "
 #LUAINCLUDES = -I $DS(PREPATH)/lua/
