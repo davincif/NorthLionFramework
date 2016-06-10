@@ -3,6 +3,12 @@
 /*GLOBAL FUNCTIONS*/
 void NLF_error_init()
 {
+	NLF_error_sdl_delay = SDL_GetTicks();
+	SDL_Delay(1);
+	NLF_error_sdl_delay = SDL_GetTicks() - NLF_error_sdl_delay;
+	NLF_signal_quit = NLF_False;
+	NLF_signal_pause = NLF_False;
+
 	filesMutex = SDL_CreateMutex();
 	flagsMutex = SDL_CreateMutex();
 	if(filesMutex == NULL || flagsMutex == NULL)
@@ -239,6 +245,7 @@ NLF_bool NLF_error_set_flag(NLF_Error e, int args, char *msg, ...)
 		e - the error to be set for
 		args - the amount of message given
 		*msg, ... - the messages to he settled
+		NULL - This function should always end with NULL
 	set the system error flag and error mansage.
 	after that the system is in state of error, and must be treated
 	returns NLF_Flase if the erro flag is alredy set, returns NLF_True on success
@@ -275,7 +282,7 @@ NLF_bool NLF_error_set_flag(NLF_Error e, int args, char *msg, ...)
 				errorFlag = e;
 				aux = msg;
 				va_start(lst, msg);
-				for(i = 0; aux != NULL; i++)
+				for(i = 0; i < args; i++)
 				{
 					errormsg[i] = (char*) malloc(sizeof(char) * (strlen(aux) + 1));
 					if(errormsg[i] == NULL)
@@ -288,6 +295,7 @@ NLF_bool NLF_error_set_flag(NLF_Error e, int args, char *msg, ...)
 					aux = va_arg(lst, char*);
 				}
 				errormsg[i] = NULL; //setting the sentinel and the end of the string array
+				for(; aux != NULL; aux = va_arg(lst, char*));//clean any possible extra argument
 				va_end(lst);
 			}
 		}else{
@@ -462,8 +470,8 @@ static void write_error(FILE *f, NLF_Error e, NLF_bool showOStype)
 			fprintf(f, "flag: NLF_ErrorBadArgument\ntype: %s\n", (NLF_error_or_warning(e) == NLF_False ? "error" : "warning"));
 		break;
 
-		case NLF_ErrorMultiCharDef:
-			fprintf(f, "flag: NLF_ErrorMultiCharDef\ntype: %s\n", (NLF_error_or_warning(e) == NLF_False ? "error" : "warning"));
+		case NLF_ErrorMultiDef:
+			fprintf(f, "flag: NLF_ErrorMultiDef\ntype: %s\n", (NLF_error_or_warning(e) == NLF_False ? "error" : "warning"));
 		break;
 
 		case NLF_ErrorUserAppProblem:

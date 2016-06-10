@@ -134,9 +134,10 @@ void NLF_screen_init()
 		camera.w = videoMode.w;
 		camera.h = videoMode.h;
 	}
-
 	screens = NULL;
 	currentFPS = 0;
+	estimatedFPS = 0;
+	screen_deltaTicks = INT_MAX;
 	//there's just no need to the FPS be greater then the display refresh rate
 	(videoMode.refresh_rate >= 60 || videoMode.refresh_rate == 0) ? (idealFPS = 60): (idealFPS = videoMode.refresh_rate);
 	/*******************************/
@@ -232,7 +233,59 @@ void NLF_screen_quit()
 	IMG_Quit();
 }
 
-unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned short int x, unsigned short int y, unsigned short int w, unsigned short int h, NLF_Alignment vAlign, NLF_Alignment hAlign, NLF_bool isStatic)
+void NLF_scree_run()
+{
+/*
+	This fuction will:
+		update the animation on the screens.
+		it'll try always have it's refresh rate around 'idealFPS' times per seconds.
+		also, this function is going to be a thread.
+*/
+	int tickaux;
+	int tickCounter = 0;
+	int aux;
+	NLF_USInt FPScounter = 0;
+
+
+	//ISSUE: missing to treat what happens when SDL_GetTicks() overflows
+	while(NLF_signal_quit == NLF_False)
+	{
+		//MISSING IMPLEMENTING THE PAUSE SIGNAL
+
+		//estimate FPS
+		estimatedFPS = 1000 / screen_deltaTicks;
+
+		//take the current time
+		tickaux = SDL_GetTicks();
+
+		//update animations and screens
+		NLF_animation_update();
+		NLF_screen_print();
+
+		//estimate the sleep time to reach the ideal FPS
+		if(estimatedFPS >= idealFPS)
+		{
+			aux = ((estimatedFPS - idealFPS) * screen_deltaTicks) / idealFPS;
+			if(aux > NLF_error_sdl_delay)
+				SDL_Delay(aux - NLF_error_sdl_delay);
+		}
+
+		//measuring current fps
+		tickCounter += screen_deltaTicks;
+		FPScounter++;
+		if(tickCounter >= 1000)
+		{
+			currentFPS = FPScounter;
+			FPScounter = 0;
+			tickaux -= 1000;
+		}
+
+		//mensure the time spent
+		screen_deltaTicks = SDL_GetTicks() - tickaux;
+	}
+}
+
+NLF_USInt NLF_screen_add(NLF_USInt sugestPosition, NLF_USInt x, NLF_USInt y, NLF_USInt w, NLF_USInt h, NLF_Alignment vAlign, NLF_Alignment hAlign, NLF_bool isStatic)
 {
 /*
 	arguments:
@@ -249,13 +302,13 @@ unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned sh
 		returns the position where the screen was inserted, or 0 in error case
 		the only way this function can fail is if any allocation errorc ocurrur, then it'll sets an error flag and msg
 */
-	unsigned short int aux, ret;
+	NLF_USInt aux, ret;
 	NLF_Screen *ps, *psant, *stemp;
 	int ww, hw;
 
 	if(sugestPosition <= 0)
 	{
-		NLF_error_set_flag(NLF_ErrorCantCreateFile, 1, "in NLF_screen_add 1st argument must be > 0");
+		NLF_error_set_flag(NLF_ErrorCantCreateFile, 1, "in NLF_screen_add 1st argument must be > 0", NULL);
 		return 0;
 	}
 
@@ -264,7 +317,7 @@ unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned sh
 	{
 		printf("Could not craete NLF_Screen\n");
 		printf("Out of memory\n");
-		NLF_error_set_flag(NLF_ErrorInsufficientMemory, 1, "Out of memory when creating new screen");
+		NLF_error_set_flag(NLF_ErrorInsufficientMemory, 1, "Out of memory when creating new screen", NULL);
 		ret = 0;
 	}else{
 		if(screens != NULL)
@@ -379,7 +432,7 @@ unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned sh
 		{
 			printf("Could not craete screen's texture\n");
 			printf("Out of memory\n");
-			NLF_error_set_flag(NLF_ErrorInsufficientMemory, 1, "Out of memory when creating new screen's texture");
+			NLF_error_set_flag(NLF_ErrorInsufficientMemory, 1, "Out of memory when creating new screen's texture", NULL);
 			NLF_screen_remove(stemp->position);
 			ret = 0;
 		}else{

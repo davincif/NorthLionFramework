@@ -61,6 +61,7 @@
 /*ENUM AND TYPES*/
 typedef SDL_Rect NLF_Rect;
 typedef SDL_Point NLF_Point;
+typedef unsigned short int NLF_USInt;
 
 typedef enum NLF_bool
 {

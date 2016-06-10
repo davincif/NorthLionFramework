@@ -4,6 +4,7 @@
 /*CLIBRARIES*/
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 /************/
 
 /*EXTERNAL LIBRARIES*/
@@ -13,32 +14,14 @@
 
 /*INTERNAL LIBRARIES*/
 #include "NLF_error.h"
+#include "NLF_animation.h"
+#include "NLF_screen_essential.h"
 /********************/
-
-/*ENUM AND TYPES*/
-typedef enum NLF_Alignment
-{
-	NLF_AlignmentNone, NLF_AlignmentCenter, NLF_AlignmentRight, NLF_AlignmentLeft, NLF_AlignmentUp, NLF_AlignmentDown, NLF_AlignmentToken
-}NLF_Alignment;
-
-typedef NLF_Rect NLF_Camera;
-
-typedef struct NLF_Screen
-{
-	SDL_Texture *scene;
-	NLF_Rect dimetions; //an screen may the larger then the window
-	unsigned short int position; //position of the windows between the other screens
-	NLF_Alignment vAlign;
-	NLF_Alignment hAlign;
-	struct NLF_Screen *next;
-} NLF_Screen;
-/****************/
 
 /*GLOBAL VARIABLES*/
 
 //for internal funcionality only
 static NLF_Camera camera; //defines the global coodinate system, wich the (0,0), width and height are the same of game window
-static SDL_Renderer *window_rederer;
 static SDL_Window *window;
 static SDL_RendererInfo rendererInfo;
 static NLF_bool rendererInfoUnknown; //in case it was impossible to get information about renderer, set to NLF_True
@@ -52,14 +35,16 @@ static int qtdDisplay; //the amount of displays in the system
 static int displayInUse; //the number of the display we're using now
 static SDL_DisplayMode videoMode; //the video mode of the display we're using now
 static NLF_bool displayInfoUnknown; //in case it was impossible to define the display mode, set to NLF_True
-static unsigned short int currentFPS; //the FPS the system is operating just now
-static unsigned short int idealFPS; //the FPS that the system should be operating
+static NLF_USInt currentFPS; //the FPS the system is operating just now
+static NLF_USInt idealFPS; //the FPS that the system should be operating
+static NLF_USInt estimatedFPS; //the FPS the the system estimante to reach.
 /******************/
 
 /*GLOBAL FUNCTIONS*/
 void NLF_screen_init();
 void NLF_screen_quit();
-unsigned short int NLF_screen_add(unsigned short int sugestPosition, unsigned short int x, unsigned short int y, unsigned short int w, unsigned short int h, NLF_Alignment vAlign, NLF_Alignment hAlign, NLF_bool isStatic);
+void NLF_scree_run();
+NLF_USInt NLF_screen_add(NLF_USInt sugestPosition, NLF_USInt x, NLF_USInt y, NLF_USInt w, NLF_USInt h, NLF_Alignment vAlign, NLF_Alignment hAlign, NLF_bool isStatic);
 void NLF_screen_remove(short int position);
 void NLF_screen_print();
 void NLF_camera_move(int plusx, int plusy);

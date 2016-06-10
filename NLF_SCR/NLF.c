@@ -13,6 +13,10 @@ void NLF_init()
 	NLF_screen_init();
 	printf("done\n");
 
+	printf("\tAnimation module... ");
+	NLF_animation_init();
+	printf("done\n");
+
 	printf("NLF Initialized!\n\n");
 }
 
@@ -25,8 +29,12 @@ void NLF_quit()
 	NLF_error_quit();
 	printf("done\n");
 
-	printf("\tScreen_module... ");
+	printf("\tScreen module... ");
 	NLF_screen_quit();
+	printf("done\n");
+
+	printf("\tAnimation module... ");
+	NLF_animation_quit();
 	printf("done\n");
 	
 	printf("NLF finished!\n\n");

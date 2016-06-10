@@ -10,35 +10,26 @@ void startGame()
 
 int main(int arg, char *argc[])
 {
-	unsigned short int r;
-	int xd = 0;
-
 	NLF_init();
 
-	NLF_game_start(NULL, startGame);
-
-	r = NLF_screen_add(1, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	r = NLF_screen_add(1, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	r = NLF_screen_add(2, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	r = NLF_screen_add(5, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	r = NLF_screen_add(5, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	r = NLF_screen_add(6, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	r = NLF_screen_add(7, 0, 0, 0, 0, NLF_AlignmentCenter, NLF_AlignmentCenter, NLF_False);
-	//TESTE_RUN_LIST();
-	//TESTE_RUN_LIST - was a funtion that only run the list and print the positions, only to test the code
-
-	NLF_screen_remove(6);
-	//TESTE_RUN_LIST();
-	NLF_screen_remove(1);
-	//TESTE_RUN_LIST();
-	NLF_screen_remove(5);
-	//TESTE_RUN_LIST();
-	NLF_screen_remove(5);
-	//TESTE_RUN_LIST();
-	NLF_screen_remove(-1);
-	//TESTE_RUN_LIST();
-
-	NLF_screen_print();
+	NLF_USInt id = 9, sid = 10, sid2 = 11;
+	NLF_Error e;
+	e = NLF_animation_add_empty(1, &id, 1);
+	printf("e = %d\n", e);
+	printf("id = %d\n", id);
+	e = NLF_animation_add(id, "images/runningcat.png", 2, 4, 8, 0, 1, &sid);
+	printf("e = %d\n", e);
+	printf("sid = %d\n", sid);
+	e = NLF_animation_add(id, "images/gatin.jpg", 3, 4, 10, 0, 1, &sid2);
+	printf("e = %d\n", e);
+	printf("sid2 = %d\n", sid2);
+	e = NLF_animation_toggle_way(id, 0);
+	printf("\ne = %d\n", e);
+	printf("NLF_animation_start\n");
+	e = NLF_animation_start(id, 0);
+	printf("NLF_animation_remove\n");
+	NLF_animation_remove(id);
+	printf("Animation %d removed\n", id);
 
 	NLF_quit();
 
