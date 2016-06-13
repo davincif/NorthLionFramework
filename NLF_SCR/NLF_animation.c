@@ -56,11 +56,16 @@ void NLF_animation_quit()
 	}
 }
 
-NLF_Error NLF_animation_add_empty(NLF_USInt animationAmnt, NLF_USInt *ID, NLF_USInt screenPosition)
+NLF_Error NLF_animation_add_empty(NLF_USInt animationAmnt, NLF_USInt screenPosition, NLF_USInt *ID)
 {
 /*
-	Alloc a new Animation and it's sprites. But leave all things setted to 0.
-	to maintain the correctness this function will also treat the interlocked list, updating pointer and counters.
+arguments:
+		animationAmnt - how many sprite-sheet animation there are in this animation.
+		screenPosition - what is the screen where this animation shall be printed.
+		ID - a integer to be filled with the new animation ID.
+	This fuction will:
+		Alloc a new Animation and it's sprites. But leave all things setted to 0.
+		To maintain the correctness this function will also treat the interlocked list, updating pointer and counters.
 */
 	NLF_Error e = NLF_ErrorNone;
 	struct AniVector *auxvect = NLF_actorsAni;
@@ -396,10 +401,44 @@ NLF_Error _NLF_animation_stop_start(NLF_USInt ID, NLF_USInt aniID, NLF_bool sos)
 	return NLF_ErrorNone;
 }
 
+NLF_Error NLF_animation_change_screen(NLF_USInt ID, NLF_USInt screenPosition)
+{
+/*
+	arguments:
+		ID - The ID of the animation who must be found
+		screenPosition - what is the screen where this animation shall be printed.
+	This fuction will:
+		change in wich screen the given animation will be printed, and:
+		returns NLF_ErrorNone - if everything goes right;
+		returns NLF_ErrorBadArgument - if 'screenPosition' < 0. NOTE.: this fucntion will not notice if you pass a screen ID too big that does not existe in the game and this animation will be running but not printed
+		returns NLF_ErrorActorNotFound - if the animation with the id 'ID' were not found.
+*/
+	NLF_Animation *aniaux;
+	NLF_USInt i;
+
+	if(screenPosition < 0)
+	{
+		printf("screenPosition value invalid\n", ID);
+		return NLF_ErrorBadArgument;
+	}
+
+	aniaux = NLF_animation_search(ID);
+	if(aniaux == NULL)
+	{
+		printf("Animation ID=%d not found\n", ID);
+		return NLF_ErrorActorNotFound;
+	}
+
+	aniaux->animations[aniID]->screenID = screenPosition;
+
+	return NLF_ErrorNone;
+}
+
 void NLF_animation_update()
 {
 /*
 	This fuction will:
+		update the state of all current running animations
 */
 	secCounter += screen_deltaTicks;
 	struct AniVector *auxvect;
