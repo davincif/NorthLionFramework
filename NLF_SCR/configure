@@ -46,7 +46,7 @@ makerfile_l2l()
 CC = gcc
 
 #the standart ompilation flags of the project
-CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration
+CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized
 
 #path to the folder's root, where the holy not build framework is. Relate to this Makefile
 PREPATH = ..\n" > Makefile
@@ -81,7 +81,7 @@ makerfile_l2w()
 	fi
 
 	printf "#the standart ompilation flags of the project
-CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration
+CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized
 
 #path to the folder's root, where the holy not build framework is. Relate to this Makefile
 PREPATH = ..

@@ -449,9 +449,9 @@ NLF_Error _NLF_animation_stop_start(NLF_USInt ID, NLF_USInt aniID, NLF_bool sos)
 			//start animation
 			aniaux->currentAni = aniaux->animations[aniID];
 			if(aniaux->currentAni->way == 1)
-				aniaux->currentAni = aniaux->currentAni->framesAmnt; //LEMBRAR DE CHECAR A TIPAGEM DESTA LINHA!!!
+				aniaux->currentAni->currentFrame = aniaux->currentAni->frames; //LEMBRAR DE CHECAR A TIPAGEM DESTA LINHA!!!
 			else
-				aniaux->currentAni = (aniaux->currentAni->frames + aniaux->currentAni->framesAmnt-1);
+				aniaux->currentAni->currentFrame = (aniaux->currentAni->frames + aniaux->currentAni->framesAmnt-1);
 		}else{
 			//stop animation
 			aniaux->currentAni = NULL;
@@ -482,7 +482,7 @@ NLF_Error NLF_animation_change_screen(NLF_USInt ID, NLF_USInt screenPosition)
 
 	if(screenPosition < 0)
 	{
-		printf("screenPosition value invalid\n", ID);
+		printf("\"%d\" isn't a valid value for screenPosition\n", screenPosition);
 		return NLF_ErrorBadArgument;
 	}
 

@@ -233,7 +233,7 @@ void NLF_screen_quit()
 	IMG_Quit();
 }
 
-void NLF_scree_run()
+void NLF_screen_run()
 {
 /*
 	This fuction will:

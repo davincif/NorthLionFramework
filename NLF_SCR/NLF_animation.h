@@ -1,8 +1,3 @@
-/*BIG ISSUE!
-The animation shall be thread safe! but it'll adds a very big overhead, look:
-if NLF_animation_update() is running, and for some reason the user call a function to delete an animation
-this 2 things will very probably be running on different threads, and my lead the update() function to a segmentation fault!
-Think how to solve it...*/
 #ifndef NLF_ANIMATION_H
 #define NLF_ANIMATION_H
 #define ANIVECTORSIZE 500
