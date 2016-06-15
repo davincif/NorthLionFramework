@@ -15,6 +15,7 @@ Think how to solve it...*/
 
 /*EXTERNAL LIBRARIES*/
 #include "SDL.h"
+#include "SDL_mutex.h"
 /*********************/
 
 /*INTERNAL LIBRARIES*/
@@ -54,6 +55,7 @@ struct AniVector
 /*GLOBAL VARIABLES*/
 
 //for internal funcionality only
+static SDL_mutex *actorsAniMutex;
 static struct AniVector *NLF_actorsAni;
 static int secCounter;
 /******************/
