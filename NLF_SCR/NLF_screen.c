@@ -153,7 +153,7 @@ void NLF_screen_init()
 	screens = NULL;
 	currentFPS = 0;
 	estimatedFPS = 0;
-	screen_deltaTicks = INT_MAX;
+	screen_deltaTicks = 1;
 	//there's just no need to the FPS be greater then the display refresh rate
 	(videoMode.refresh_rate >= 60 || videoMode.refresh_rate == 0) ? (idealFPS = 60): (idealFPS = videoMode.refresh_rate);
 	/*************************/
@@ -291,7 +291,6 @@ void NLF_screen_run()
 			if(aux > NLF_error_sdl_delay)
 				SDL_Delay(aux - NLF_error_sdl_delay);
 		}
-
 		//measuring current fps
 		tickCounter += screen_deltaTicks;
 		FPScounter++;
@@ -299,11 +298,13 @@ void NLF_screen_run()
 		{
 			currentFPS = FPScounter;
 			FPScounter = 0;
-			tickaux -= 1000;
+			tickCounter -= 1000;
 		}
 
 		//mensure the time spent
 		screen_deltaTicks = SDL_GetTicks() - tickaux;
+		if(screen_deltaTicks == 0)
+			screen_deltaTicks++;
 	}
 }
 
@@ -549,6 +550,55 @@ void NLF_screen_print()
 	} else {
 		printf("Couldn't lock mutex\n");
 	}
+}
+
+void NLF_screen_set_fps(NLF_USInt newfps)
+{
+/*
+	arguments:
+		newfps - the rate you want the screen to be refreshed per second
+	this function will:
+		The 'newfps' as the new fps to be achieved by the system
+		NOTE: the system will not accept any fps graeter then 60 or lesser then 24fps;
+		over 60 may lead to performace issues, and under 24 will lead to a bad game expirience.
+		NOTE²: refreshing the game over the gamer's screen refresh rate capacity if work thrown away,
+		so if you whant to set the ideal fps tho the screen refresh rate, just pass 'newfps' as 0(zero).
+*/
+	if(newfps == 0)
+		idealFPS = videoMode.refresh_rate;
+	else if(newfps > 60)
+		idealFPS = 60;
+	else if(newfps < 24)
+		idealFPS = 24;
+	else
+		idealFPS = newfps;
+}
+
+NLF_USInt NLF_screen_get_current_fps()
+{
+/*
+	this function will:
+		returns the current fps of the screen.
+*/
+		return currentFPS;
+}
+
+NLF_USInt NLF_screen_get_ideal_fps()
+{
+/*
+	this function will:
+		returns the fps that the system is traying to achieve.
+*/
+	return idealFPS;
+}
+
+NLF_USInt NLF_screen_get_estimated_fps()
+{
+/*
+	this function will:
+		returns the fps estimated to the next second.
+*/
+	return estimatedFPS;
 }
 
 void NLF_camera_move(int plusx, int plusy)

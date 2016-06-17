@@ -4,7 +4,6 @@
 /*CLIBRARIES*/
 #include <stdio.h>
 #include <stdlib.h>
-#include <limits.h>
 /************/
 
 /*EXTERNAL LIBRARIES*/
@@ -50,6 +49,10 @@ void NLF_screen_run();
 NLF_USInt NLF_screen_add(NLF_USInt sugestPosition, NLF_USInt x, NLF_USInt y, NLF_USInt w, NLF_USInt h, NLF_Alignment vAlign, NLF_Alignment hAlign, NLF_bool isStatic);
 void NLF_screen_remove(short int position);
 void NLF_screen_print();
+void NLF_screen_set_fps(NLF_USInt newfps);
+NLF_USInt NLF_screen_get_current_fps();
+NLF_USInt NLF_screen_get_ideal_fps();
+NLF_USInt NLF_screen_get_estimated_fps();
 void NLF_camera_move(int plusx, int plusy);
 void NLF_camera_resize(int x, int y, int w, int h);
 void NLF_camera_setPosition(int newx, int newy);

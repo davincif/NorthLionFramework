@@ -38,7 +38,9 @@ int main(int arg, char *argc[])
 	NLF_animation_remove(id);
 	printf("Animation %d removed\n", id);
 
+	SDL_Delay(2000);
 	NLF_quit();
+	SDL_WaitThread(NLF_thread_screen, NULL);
 
 	return 0;
 }

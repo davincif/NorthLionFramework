@@ -26,7 +26,13 @@ SDL_Thread *NLF_thread_sound_player;
 /*GLOBAL FUNCTIONS*/
 void NLF_init();
 void NLF_quit();
+void NLF_pause();
+void NLF_continue();
 void NLF_game_start(void *user_parameter);
 /******************/
+
+/*LOCAL FUNTIONS*/
+static void _NLF_quit();
+/****************/
 
 #endif
