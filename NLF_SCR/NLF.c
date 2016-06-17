@@ -2,8 +2,15 @@
 
 void NLF_init()
 {
+	printf("Initing SDL...");
 	SDL_Init(SDL_INIT_EVERYTHING);
+	printf("done\n");
+
 	printf("Initing NLF...\n");
+	NLF_thread_screen = NULL;
+	NLF_thread_physics = NULL;
+	NLF_thread_event_watcher = NULL;
+	NLF_thread_sound_player = NULL;
 
 	printf("\tError module... ");
 	NLF_error_init();
@@ -41,9 +48,10 @@ void NLF_quit()
 	SDL_Quit();
 }
 
-void NLF_game_start(void *user_parameter, void (*user_start_function)(void*))
+void NLF_game_start(void *user_parameter)
 {
+/*
+*/
 	printf("Starting game...\n");
-	user_start_function(user_parameter);
 	printf("Game started\n\n");
 }

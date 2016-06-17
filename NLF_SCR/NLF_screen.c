@@ -123,7 +123,23 @@ void NLF_screen_init()
 	}
 	///****************************
 
-	/*SETTING SOME GLOBAL VARIABLES*/
+	/*SETTING LOCAL VARIABLES*/
+	screenMutex = SDL_CreateMutex();
+	if (screenMutex == NULL)
+	{
+		printf("Could not create screen mutex\n");
+		printf("\tAborting\n");
+		NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not create screen mutex", SDL_GetError(), NULL);
+		exit(NLF_ErrorInsufficientMemory);
+	}
+	cameraMutex = SDL_CreateMutex();
+	if (cameraMutex == NULL)
+	{
+		printf("Could not create screen mutex\n");
+		printf("\tAborting\n");
+		NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not create screen mutex", SDL_GetError(), NULL);
+		exit(NLF_ErrorInsufficientMemory);
+	}
 	camera.x = 0;
 	camera.y = 0;
 	if(displayInfoUnknown == NLF_False)
@@ -140,7 +156,7 @@ void NLF_screen_init()
 	screen_deltaTicks = INT_MAX;
 	//there's just no need to the FPS be greater then the display refresh rate
 	(videoMode.refresh_rate >= 60 || videoMode.refresh_rate == 0) ? (idealFPS = 60): (idealFPS = videoMode.refresh_rate);
-	/*******************************/
+	/*************************/
 
 	///CREATING WINDOW SET
 	window = SDL_CreateWindow("NorthLionFramework Game", 0, 0, camera.w, camera.h, SDL_WINDOW_BORDERLESS | SDL_WINDOW_MAXIMIZED);
@@ -227,9 +243,15 @@ void NLF_screen_init()
 
 void NLF_screen_quit()
 {
+	SDL_DestroyMutex(screenMutex);
+	screenMutex = NULL;
+	SDL_DestroyMutex(cameraMutex);
+	cameraMutex = NULL;
 	NLF_screen_destroy();
 	SDL_DestroyWindow(window);
+	window = NULL;
 	SDL_DestroyRenderer(window_rederer);
+	window_rederer = NULL;
 	IMG_Quit();
 }
 
@@ -318,8 +340,11 @@ NLF_USInt NLF_screen_add(NLF_USInt sugestPosition, NLF_USInt x, NLF_USInt y, NLF
 		printf("Could not craete NLF_Screen\n");
 		printf("Out of memory\n");
 		NLF_error_set_flag(NLF_ErrorInsufficientMemory, 1, "Out of memory when creating new screen", NULL);
-		ret = 0;
-	}else{
+		return 0;
+	}
+
+	if(SDL_LockMutex(screenMutex) == 0)
+	{
 		if(screens != NULL)
 		{
 			//fiding where to insert the screen
@@ -435,9 +460,11 @@ NLF_USInt NLF_screen_add(NLF_USInt sugestPosition, NLF_USInt x, NLF_USInt y, NLF
 			NLF_error_set_flag(NLF_ErrorInsufficientMemory, 1, "Out of memory when creating new screen's texture", NULL);
 			NLF_screen_remove(stemp->position);
 			ret = 0;
-		}else{
-
 		}
+
+		SDL_UnlockMutex(screenMutex);
+	} else {
+		printf("Couldn't lock mutex\n");
 	}
 
 	return ret;
@@ -454,45 +481,52 @@ void NLF_screen_remove(short int position)
 	NLF_Screen *ps, *psant;
 	short int aux;
 
-	ps = screens;
-	psant = screens;
-	if(position > 0)
+	if(SDL_LockMutex(screenMutex) == 0)
 	{
-		//fiding the given positon
-		for(aux = 1; aux < position && ps != NULL; aux++)
+		ps = screens;
+		psant = screens;
+		if(position > 0)
 		{
-			psant = ps;
-			ps = ps->next;
-		}
-	}else if(position == -1)
-	{
-		//fiding the last position
-		while(ps->next != NULL)
+			//fiding the given positon
+			for(aux = 1; aux < position && ps != NULL; aux++)
+			{
+				psant = ps;
+				ps = ps->next;
+			}
+		}else if(position == -1)
 		{
-			psant = ps;
-			ps = ps->next;
-		}
-		aux = position;
-	}
-
-	if(position != 0)
-	{
-		//removing the found position
-		if(aux == position && ps != NULL)
-		{
-			if(psant == screens)
-				screens = psant->next;
-			else
-				psant->next = ps->next;
-			SDL_DestroyTexture(ps->scene);
-			free(ps);
+			//fiding the last position
+			while(ps->next != NULL)
+			{
+				psant = ps;
+				ps = ps->next;
+			}
+			aux = position;
 		}
 
-		//fixing the positions
-		for(ps = psant->next; ps != NULL; ps = ps->next)
+		if(position != 0)
 		{
-			ps->position--;
+			//removing the found position
+			if(aux == position && ps != NULL)
+			{
+				if(psant == screens)
+					screens = psant->next;
+				else
+					psant->next = ps->next;
+				SDL_DestroyTexture(ps->scene);
+				free(ps);
+			}
+
+			//fixing the positions
+			for(ps = psant->next; ps != NULL; ps = ps->next)
+			{
+				ps->position--;
+			}
 		}
+
+		SDL_UnlockMutex(screenMutex);
+	} else {
+		printf("Couldn't lock mutex\n");
 	}
 }
 
@@ -503,12 +537,18 @@ void NLF_screen_print()
 		print all screens in the display
 */
 	NLF_Screen *ps;
-	SDL_RenderClear(window_rederer);
-	for(ps = screens; ps != NULL; ps = ps->next)
+
+	if(SDL_LockMutex(screenMutex) == 0)
 	{
-		SDL_RenderCopy(window_rederer, ps->scene, (const SDL_Rect*) &camera, (const SDL_Rect*) &ps->dimetions);
+		SDL_RenderClear(window_rederer);
+		for(ps = screens; ps != NULL; ps = ps->next)
+			SDL_RenderCopy(window_rederer, ps->scene, (const SDL_Rect*) &camera, (const SDL_Rect*) &ps->dimetions);
+		SDL_RenderPresent(window_rederer);
+
+		SDL_UnlockMutex(screenMutex);
+	} else {
+		printf("Couldn't lock mutex\n");
 	}
-	SDL_RenderPresent(window_rederer);
 }
 
 void NLF_camera_move(int plusx, int plusy)
@@ -520,8 +560,15 @@ void NLF_camera_move(int plusx, int plusy)
 	This fuction will:
 		just move the camera. Related to the windows OF COURSE
 */
-	camera.x += plusx;
-	camera.y += plusy;
+	if(SDL_LockMutex(cameraMutex) == 0)
+	{
+		camera.x += plusx;
+		camera.y += plusy;
+
+		SDL_UnlockMutex(cameraMutex);
+	} else {
+		printf("Couldn't lock mutex\n");
+	}
 }
 
 void NLF_camera_resize(int x, int y, int w, int h)
@@ -530,21 +577,17 @@ void NLF_camera_resize(int x, int y, int w, int h)
 	arguments:
 		x,y,w,h - the new x, y, width and height of the camera
 */
+	if(SDL_LockMutex(cameraMutex) == 0)
+	{
 		camera.x = x;
 		camera.y = y;
 		camera.w = w;
 		camera.h = h;
-}
 
-void NLF_camera_add_size(int plusw, int plush)
-{
-/*
-	arguments:
-		plusx - the number to be added (or subtracted) from the camera's width size
-		plusy - the number to be added (or subtracted) from the camera's height size
-	This fuction will:
-		just change the camera size
-*/
+		SDL_UnlockMutex(cameraMutex);
+	} else {
+		printf("Couldn't lock mutex\n");
+	}
 }
 
 void NLF_camera_setPosition(int newx, int newy)
@@ -555,8 +598,15 @@ void NLF_camera_setPosition(int newx, int newy)
 	This fuction will:
 		just reposition the camera
 */
+	if(SDL_LockMutex(cameraMutex) == 0)
+	{
 		camera.x = newx;
 		camera.y = newy;
+
+		SDL_UnlockMutex(cameraMutex);
+	} else {
+		printf("Couldn't lock mutex\n");
+	}
 }
 
 void NLF_camera_realign(NLF_Alignment vAlignment, NLF_Alignment hAlignment)
@@ -570,10 +620,12 @@ void NLF_camera_realign(NLF_Alignment vAlignment, NLF_Alignment hAlignment)
 	This fuction will:
 		realing the camera
 */
-		int ww, hw;
+	int ww, hw;
 
-		SDL_GetWindowSize(window, &ww, &hw);
+	SDL_GetWindowSize(window, &ww, &hw);
 
+	if(SDL_LockMutex(cameraMutex) == 0)
+	{
 		switch(vAlignment)
 		{
 			case NLF_AlignmentCenter:
@@ -603,6 +655,11 @@ void NLF_camera_realign(NLF_Alignment vAlignment, NLF_Alignment hAlignment)
 				camera.x = 0;
 				break;
 		}
+
+		SDL_UnlockMutex(cameraMutex);
+	} else {
+		printf("Couldn't lock mutex\n");
+	}
 }
 
 void NLF_camera_reset()
@@ -613,9 +670,16 @@ void NLF_camera_reset()
 */
 	int ww, wh;
 
-	camera.x = 0;
-	camera.y = 0;
-	SDL_GetWindowSize(window, &camera.w, &camera.h);
+	if(SDL_LockMutex(cameraMutex) == 0)
+	{
+		camera.x = 0;
+		camera.y = 0;
+		SDL_GetWindowSize(window, &camera.w, &camera.h);
+
+		SDL_UnlockMutex(cameraMutex);
+	} else {
+		printf("Couldn't lock mutex\n");
+	}
 }
 
 /******************/
@@ -624,12 +688,20 @@ void NLF_camera_reset()
 static void NLF_screen_destroy()
 {
 	NLF_Screen *ps;
-	for(ps = screens; ps != NULL;)
+
+	if(SDL_LockMutex(screenMutex) == 0)
 	{
-		screens = ps->next;
-		SDL_DestroyTexture(ps->scene);
-		free(ps);
-		ps = screens;
+		for(ps = screens; ps != NULL;)
+		{
+			screens = ps->next;
+			SDL_DestroyTexture(ps->scene);
+			free(ps);
+			ps = screens;
+		}
+
+		SDL_UnlockMutex(screenMutex);
+	} else {
+		printf("Couldn't lock mutex\n");
 	}
 }
 /****************/

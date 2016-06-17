@@ -9,10 +9,10 @@ void NLF_animation_init()
 	actorsAniMutex = SDL_CreateMutex();
 	if (actorsAniMutex == NULL)
 	{
-		printf("Could nOt create Animation mutex\n");
+		printf("Could not create Animation mutex\n");
 		printf("\tAborting\n");
 		NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not create Animation mutex", SDL_GetError(), NULL);
-		return NLF_ErrorInsufficientMemory;
+		exit(NLF_ErrorInsufficientMemory);
 	}
 
 	NLF_actorsAni = (struct AniVector*) malloc(sizeof(struct AniVector));
@@ -150,7 +150,7 @@ arguments:
 
 		SDL_UnlockMutex(actorsAniMutex);
 	} else {
-		fprintf(stderr, "Couldn't lock mutex\n");
+		printf("Couldn't lock mutex\n");
 	}
 
 	return e;
@@ -283,7 +283,7 @@ NLF_Error NLF_animation_add(NLF_USInt ID, const char *spriteAdress, NLF_USInt co
 
 		SDL_UnlockMutex(actorsAniMutex);
 	} else {
-		fprintf(stderr, "Couldn't lock mutex\n");
+		printf("Couldn't lock mutex\n");
 	}
 
 	return NLF_ErrorNone;
@@ -336,7 +336,7 @@ NLF_Error NLF_animation_set_way(NLF_USInt ID, NLF_USInt aniID, short int way)
 
 		SDL_UnlockMutex(actorsAniMutex);
 	} else {
-		fprintf(stderr, "Couldn't lock mutex\n");
+		printf("Couldn't lock mutex\n");
 	}
 
 	return NLF_ErrorNone;
@@ -407,7 +407,7 @@ NLF_Animation* _NLF_animation_search_n_dell(NLF_USInt ID, NLF_bool dell)
 
 		SDL_UnlockMutex(actorsAniMutex);
 	} else {
-		fprintf(stderr, "Couldn't lock mutex\n");
+		printf("Couldn't lock mutex\n");
 	}
 
 	return ret;
@@ -459,7 +459,7 @@ NLF_Error _NLF_animation_stop_start(NLF_USInt ID, NLF_USInt aniID, NLF_bool sos)
 
 		SDL_UnlockMutex(actorsAniMutex);
 	} else {
-		fprintf(stderr, "Couldn't lock mutex\n");
+		printf("Couldn't lock mutex\n");
 	}
 
 	return NLF_ErrorNone;
@@ -499,7 +499,7 @@ NLF_Error NLF_animation_change_screen(NLF_USInt ID, NLF_USInt screenPosition)
 
 		SDL_UnlockMutex(actorsAniMutex);
 	} else {
-		fprintf(stderr, "Couldn't lock mutex\n");
+		printf("Couldn't lock mutex\n");
 	}
 
 	return NLF_ErrorNone;
@@ -538,7 +538,7 @@ void NLF_animation_update()
 
 		SDL_UnlockMutex(actorsAniMutex);
 	} else {
-		fprintf(stderr, "Couldn't lock mutex\n");
+		printf("Couldn't lock mutex\n");
 	}
 }
 /******************/
