@@ -209,10 +209,10 @@ NLF_bool NLF_OSS_check_file_existence(const char *pathname)
 	NLF_bool ok;
 
 	//if(errno == ENOENT) //path não existe
-	if(stat(pathname, &info) == 0)
-		ok = NLF_True;
-	else
+	if(stat(pathname, &info) < 0)
 		ok = NLF_False;
+	else
+		ok = NLF_True;
 
 	return ok;
 }

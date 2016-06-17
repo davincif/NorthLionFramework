@@ -21,6 +21,9 @@
 /****************/
 
 /*GLOBAL VARIABLES*/
+NLF_bool NLF_signal_quit; //signal to quit the system
+NLF_bool NLF_signal_pause; //signal t pause the system
+int NLF_error_sdl_delay; //de delay the inherent to the SDL_Delay() funtion.
 
 //for internal funcionality only
 static SDL_mutex *filesMutex; //lock to use fileName or filePath

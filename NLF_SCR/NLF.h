@@ -7,6 +7,7 @@
 
 /*EXTERNAL LIBRARIES*/
 #include "SDL.h"
+#include "SDL_thread.h"
 /*********************/
 
 /*NLF Internal Includes*/
@@ -15,10 +16,17 @@
 #include "NLF_screen.h"
 /***********************/
 
+/*THREADS*/
+SDL_Thread *NLF_thread_screen;
+SDL_Thread *NLF_thread_physics;
+SDL_Thread *NLF_thread_event_watcher;
+SDL_Thread *NLF_thread_sound_player;
+/*********/
+
 /*GLOBAL FUNCTIONS*/
 void NLF_init();
 void NLF_quit();
-void NLF_game_start(void *user_parameter, void (*user_start_function)(void*));
+void NLF_game_start(void *user_parameter);
 /******************/
 
 #endif

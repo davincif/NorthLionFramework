@@ -15,11 +15,13 @@ typedef enum NLF_Error
 	NLF_ErrorNone,
 		//SDL Problems
 	NLF_ErrorSDLInitializer, NLF_ErrorSDLProblem, NLF_ErrorSDLImageInitializer, NLF_ErrorSDLImageLoad,
-	NLF_ErrorSDLMutexCreationFail, NLF_ErrorSDLMutexLockFail, NLF_ErrorSDLCreatingFail, NLF_ErrorSDLToken,
+	NLF_ErrorSDLMutexCreationFail, NLF_ErrorSDLMutexLockFail, NLF_ErrorSDLCreatingFail, NLF_ErrorSDLThreadCreationFail,
+	NLF_ErrorSDLToken,
 		//C Problems
 	NLF_ErrorFileNotFound, NLF_ErrorCantCreateFile, NLF_ErrorCrashReporCrash, NLF_ErrorInsufficientMemory, NLF_ErrorCToken,
 		//NLF Problems
-	NLF_ErrorCrash, NLF_ErrorBadArgument, NLF_ErrorMultiCharDef, NLF_ErrorNLFToken,
+	NLF_ErrorCrash, NLF_ErrorBadArgument, NLF_ErrorMultiDef, NLF_ErrorActorNotFound, NLF_ErrorInconsistency,
+	NLF_ErrorAnimatinNotFound, NLF_ErrorNLFToken,
 		//User Application Problems
 	NLF_ErrorUserAppProblem,
 		//error token
