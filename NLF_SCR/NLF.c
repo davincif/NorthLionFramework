@@ -3,12 +3,15 @@
 /*GLOBAL FUNCTIONS*/
 void NLF_init()
 {
+	char *str;
+
 	printf("Initing SDL...");
 	SDL_Init(SDL_INIT_EVERYTHING);
 	printf("done\n");
-	char *str;
 
 	printf("Initing NLF...\n");
+
+	api = NLF_APIError;
 
 	printf("\tError module... ");
 	NLF_error_init();
@@ -48,6 +51,32 @@ void NLF_quit()
 		give the signal to quit the game.
 */
 	NLF_signal_quit = NLF_True;
+	//Need to find a better to do this. eg.: if the thread do not end, kill it.
+	SDL_WaitThread(NLF_thread_screen, NULL);
+	SDL_WaitThread(NLF_thread_physics, NULL);
+	SDL_WaitThread(NLF_thread_event_watcher, NULL);
+	SDL_WaitThread(NLF_thread_sound_player, NULL);
+	NLF_thread_screen = NULL;
+	NLF_thread_physics = NULL;
+	NLF_thread_event_watcher = NULL;
+	NLF_thread_sound_player = NULL;
+
+	printf("Quiting NLF...\n");
+
+	printf("\tError module... ");
+	NLF_error_quit();
+	printf("done\n");
+
+	printf("\tScreen module... ");
+	NLF_screen_quit();
+	printf("done\n");
+
+	printf("\tAnimation module... ");
+	NLF_animation_quit();
+	printf("done\n");
+	
+	printf("NLF finished!\n\n");
+	SDL_Quit();
 }
 
 void NLF_pause()
@@ -67,26 +96,25 @@ void NLF_continue()
 */
 	NLF_signal_pause = NLF_False;
 }
-/******************/
 
-/*LOCAL FUNTIONS*/
-static void _NLF_quit()
+NLF_bool NLF_set_api(NLF_API eipiai)
 {
-	printf("Quiting NLF...\n");
+	NLF_Error e;
 
-	printf("\tError module... ");
-	NLF_error_quit();
-	printf("done\n");
+	if(api != NLF_APIError)
+	{
+		printf("Error: the API can be set only once!\n");
+		e = NLF_False;
+	}else if(eipiai >= NLF_APIToken || eipiai <= NLF_APIError)
+	{
+		printf("Error: API not recognized!\n");
+		e = NLF_False;
+	}else{
+		printf("API set\n");
+		api = eipiai;
+		e = NLF_True;
+	}
 
-	printf("\tScreen module... ");
-	NLF_screen_quit();
-	printf("done\n");
-
-	printf("\tAnimation module... ");
-	NLF_animation_quit();
-	printf("done\n");
-	
-	printf("NLF finished!\n\n");
-	SDL_Quit();
+	return e;
 }
-/****************/
+/******************/

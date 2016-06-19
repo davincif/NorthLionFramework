@@ -1,0 +1,23 @@
+
+
+
+#Build options
+build: *.o
+	cp ./*.o $(COMPILEPATH)
+	$(CC) $(CFLAGS) -shared $(COMPILEPATH)*.o $(SDL2INCLUDES) $(SDL2LIBS) $(SDLIMAGE2INCLUDES) $(SDLIMAGE2LIBS) -o $(COMPILEPATH)libNLF.so
+
+*.o:
+	$(CC) $(CFLAGS) $(SDL2INCLUDES) $(SDLIMAGE2INCLUDES) -fPIC -c *.c
+
+
+#cleaning options
+clean-build:
+	rm -f -v $(COMPILEPATH)*.o
+
+clean-all:
+	rm -f -v ./*.o ./*.h.gch
+	rm -f -v $(COMPILEPATH)*.o $(COMPILEPATH)*.so
+
+clean-soft:
+	rm -f -v ./*.o ./*.h.gch
+	rm -f -v $(COMPILEPATH)*.o

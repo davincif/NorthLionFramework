@@ -45,7 +45,7 @@ static NLF_USInt estimatedFPS; //the FPS the the system estimante to reach.
 /*GLOBAL FUNCTIONS*/
 void NLF_screen_init();
 void NLF_screen_quit();
-void NLF_screen_run();
+int NLF_screen_run();
 NLF_USInt NLF_screen_add(NLF_USInt sugestPosition, NLF_USInt x, NLF_USInt y, NLF_USInt w, NLF_USInt h, NLF_Alignment vAlign, NLF_Alignment hAlign, NLF_bool isStatic);
 void NLF_screen_remove(short int position);
 void NLF_screen_print();

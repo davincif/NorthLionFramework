@@ -1,7 +1,26 @@
+#include <NLF.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <NLF.h>
 
+void NLF_user_init()
+{
+	printf("Initing User data...");
+
+	/*your code here*/
+
+	printf("done\n");
+}
+
+void NLF_user_quit()
+{
+	printf("Quiting User data...");
+
+	/*your code here*/
+
+	printf("done\n");
+}
+
+/*
 int main(int arg, char *argc[])
 {
 	NLF_init();
@@ -44,3 +63,4 @@ int main(int arg, char *argc[])
 
 	return 0;
 }
+*/

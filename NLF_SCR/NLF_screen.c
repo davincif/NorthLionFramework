@@ -255,7 +255,7 @@ void NLF_screen_quit()
 	IMG_Quit();
 }
 
-void NLF_screen_run()
+int NLF_screen_run()
 {
 /*
 	This fuction will:

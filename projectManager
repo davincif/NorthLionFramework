@@ -1,0 +1,184 @@
+#!/bin/bash
+
+###VARIABLES###
+PROJECTPATH="projects"
+USERPROJECT=""
+###############
+
+
+###FUNCTIONS###
+create_path()
+{
+	if ! [ -d "$1" ]; then
+		mkdir "$1"
+		echo "Path '$1' created."
+	else
+		echo "Path '$1' already exist."
+		if [ "$2" == "--exclusive" ]; then
+			exit 2
+		fi
+	fi
+}
+
+check_portability()
+{
+	#check whether whiptail or dialog is installed
+	#(choosing the first command found)
+	read BOX <<< "$(which whiptail dialog 2> /dev/null)"
+
+	# exit if none found
+	if ! [ "$BOX" ]; then
+		echo 'neither whiptail nor dialog found' >&2
+		exit 1
+	else
+		echo "using $BOX..."
+	fi
+
+	# just use whichever was found
+	"$BOX" --msgbox "Message displayed with $BOX" 0 0
+}
+
+make_main()
+{
+	if [ $1 = "C" ]; then
+		printf "#include <NLF.h>
+/*#include \"your_library_here.h\"*/
+
+int main(int argc, char *argv[])
+{
+	NLF_init();
+	NLF_set_api(NLF_APIC);
+
+	/*your code here*/
+
+	NLF_quit();
+	return 0;
+}
+" > $PROJECTPATH/$USERPROJECT/main.c
+		echo "main file generated"
+	elif [ $1 = "lua" ]; then
+		printf "\n--Under development, sorry =/" > $PROJECTPATH/$USERPROJECT/main.lua
+		echo "main file generated"
+	else
+		echo "something went wrong..."
+		echo "make_main function got bad argument '$@'"
+		exit 5
+	fi
+}
+
+clean_build()
+{
+	if [ $1 = "all"]; then
+		echo "deleting all build"
+		rm -f -v $PROJECTPATH/$USERPROJECT/*.o main main.exe
+	else
+		echo "deleting only .o files"
+		rm -f -v $PROJECTPATH/$USERPROJECT/*.o
+	fi
+	echo "done*"
+}
+
+make_proj()
+{
+	local ISSRC=$*
+
+	for SRC in $ISSRC
+	do
+		local OBJ=${SRC/%.c/%.o}
+		local OBJS="$OBJ $OBJS"
+
+		for HDR in $HDRS
+		do
+			if [ $HDR -nt $OBJ ] || [ $SRC -nt $OBJ ]; then
+				echo "compiling $SRC..."
+				$CC -c -o $BJS $SRC
+			fi
+		done
+	done
+
+	local IOBJS=$*
+
+	for OBJ in $IOBJS
+	do
+		if [ $OBJ -nt $EXEC ]; then
+			echo "bulding $EXEC"
+			$CC -o $EXEC $IOBJS
+			break
+		fi
+	done
+}
+###############
+
+##START
+check_portability
+ANSWER=$("$BOX" --title "NLF Project Manager" --menu "What do you need?" 10 30 2 \
+"1" "Create new project" \
+"2" "Build my project" 3>&1 1>&2 2>&3)
+if ! [ $? = 0 ]; then
+	echo "Canceled"
+	exit 6
+fi
+
+case $ANSWER in
+	1 )
+		echo "ok, lets make a new project"
+		USERPROJECT=$("$BOX" --title "New Project" --inputbox "What's the project name?" 10 60 MyProject 3>&1 1>&2 2>&3)
+		if [ $? = 0 ]; then
+			echo "chosen path: " $PROJECTPATH/$USERPROJECT
+			create_path $PROJECTPATH
+			create_path "$PROJECTPATH/$USERPROJECT" --exclusive
+		else
+			echo "Canceled"
+			exit 3
+		fi
+
+		API=$("$BOX" --title "NLF_API" --menu "choose your API" 10 25 2 \
+		"C" "Be powerful" \
+		"lua" "Make it easy" 3>&1 1>&2 2>&3)
+		if [ $? = 0 ]; then
+			echo "API: " $API
+		else
+			echo "You chose Cancel."
+			exit 4
+		fi
+		make_main $API
+		if [ $API = "C" ]; then
+			#generate makefile
+			cat NLF_SCR/makesNconfigs/c_project_configure > $PROJECTPATH/$USERPROJECT/configure
+			chmod 755 $PROJECTPATH/$USERPROJECT/configure
+		fi
+	;;
+
+	2 )
+		if ! [ -d "$PROJECTPATH" ]; then
+			echo "sorry... any project have been created yet."
+			echo "Perhaps is signal from the gods that you should create your own NLF project! =)"
+			exit 7
+		fi
+
+		COUNT=1
+		AUX=0;
+		for proj in $PROJECTPATH/*; do
+			if ! [ -d $proj ]; then
+				echo "$proj is not a directory, what the hell is it doing here?"
+				rm -v -f $proj
+			else
+				proj=${proj:${#PROJECTPATH}}
+				STR[AUX]="${COUNT} ${proj:1}"
+				COUNT+=1
+				AUX+=1
+			fi
+		done
+		USERPROJECT=$($BOX --title "NLF Project builder" --menu "Choose the project" 10 30 2 ${STR[@]} 3>&1 1>&2 2>&3)
+		echo $USERPROJECT
+		if ! [ $? = 0 ]; then
+			echo "Canceled"
+			exit 8
+		fi
+		if ! [ -d "$PROJECTPATH/$USERPROJECT" ]; then
+			echo "The project \"$USERPROJECT\" do not exit"
+			exit 9;
+		fi
+		echo "ok, lets build your project"
+	;;
+esac

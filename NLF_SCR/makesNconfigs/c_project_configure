@@ -49,24 +49,21 @@ CC = gcc
 CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized -lm
 
 #path to the folder's root, where the holy not build framework is. Relate to this Makefile
-PREPATH = ..\n" > Makefile
+PREPATH = ../..\n" > Makefile
 
 	printf "
-#Path to the SDL, SDL_image and Lua includes and libs
+#Path to the NLF includes and libs
+NLFINCLUDES = -I $DS(PREPATH)/NLF_SCR
+NLFLIBS = -L./ -lNLF
 SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
-SDL2LIBS = -L$DS(PREPATH)/SDL2/lib/ -lSDL2 -lSDL2main -lSDL2_test
 SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
-SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/lib/ -lSDL2_image" >> Makefile
-
-	printf "
-#LUAINCLUDES = -I $DS(PREPATH)/lua/
-#LUALIB = $DS(PREPATH)/lua/ -llua -lm" >> Makefile
+OBJ=main" >> Makefile
 
 	printf "\n
 #Where to put the compiled program
-COMPILEPATH = $DS(PREPATH)/BINARIES/\n" >> Makefile
+COMPILEPATH = ./\n" >> Makefile
 
-	cat makesNconfigs/make_config >> Makefile
+	cat ../../NLF_SCR/makesNconfigs/c_make_config >> Makefile
 	echo "*done*"
 }
 
@@ -84,20 +81,21 @@ makerfile_l2w()
 CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized
 
 #path to the folder's root, where the holy not build framework is. Relate to this Makefile
-PREPATH = ..
+PREPATH = ../..\n" > Makefile
 
-#Path to the SDL, SDL_image and Lua includes and libs
+	printf "
+#Path to the NLF includes and libs
+NLFINCLUDES = -I $DS(PREPATH)/NLF_SCR
+NLFLIBS = -L./ -lNLF
 SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
-SDL2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2/$1 -lmingw32 -lSDL2main -lSDL2
 SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
-SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2_image/$1 -lSDL2_image
-#LUAINCLUDES = -I $DS(PREPATH)/lua/
-#LUALIB = -L $DS(PREPATH)/lua/ -llua -lm
+OBJ=main.exe" >> Makefile
 
+	printf "\n
 #Where to put the compiled program
-COMPILEPATH = $DS(PREPATH)/BINARIES/" >> Makefile
+COMPILEPATH = ./\n" >> Makefile
 
-	cat makesNconfigs/make_config_win >> Makefile
+	cat ../../NLF_SCR/makesNconfigs/c_make_config >> Makefile
 	echo "*done*"
 }
 
