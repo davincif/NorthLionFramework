@@ -3,6 +3,16 @@
 ###VARIABLES###
 PROJECTPATH="projects"
 USERPROJECT=""
+PROJECTS=""
+MACHINE_TYPE=`uname -m`
+SYSTEM_TYPE=`uname -o`
+#Path to includes and libs
+PREPATH="../.."
+NLFINCLUDES="-I $PREPATH/NLF_SCR"
+NLFLIBS="-L./ -lNLF"
+SDL2INCLUDES="-I $PREPATH/SDL2/include"
+SDLIMAGE2INCLUDES="-I $PREPATH/SDL2/SDL_image"
+CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized"
 ###############
 
 
@@ -66,46 +76,73 @@ int main(int argc, char *argv[])
 	fi
 }
 
-clean_build()
+make_c_proj()
 {
-	if [ $1 = "all"]; then
-		echo "deleting all build"
-		rm -f -v $PROJECTPATH/$USERPROJECT/*.o main main.exe
+	#get parameters
+	case $1 in
+		-l2l )
+			cp BINARIES/*.so $PROJECTPATH/$USERPROJECT/
+			case $2 in
+				-32 )
+					CC="gcc -m32"
+					COMPILEPATH="linux32"
+				;;
+
+				-64 )
+					CC="gcc"
+					COMPILEPATH="linux64"
+				;;
+			esac
+		;;
+
+		-l2w )
+			cp BINARIES/*.dll $PROJECTPATH/$USERPROJECT/
+			case $2 in
+				-32 )
+					CC="i686-w64-mingw32-gcc"
+					COMPILEPATH="windows32"
+				;;
+
+				-64 )
+					CC="x86_64-w64-mingw32-gcc"
+					COMPILEPATH="windows64"
+				;;
+			esac
+		;;
+	esac
+	cd $PROJECTPATH/$USERPROJECT
+	rm -f -v -r $COMPILEPATH
+	create_path $COMPILEPATH
+	echo "$COMPILEPATH"
+
+	#compile the project
+	local SRCS=*.c
+	local EXEC="main"
+	if [ "$1" == "-l2l" ]; then
+		local EXECEXTENTION=""
 	else
-		echo "deleting only .o files"
-		rm -f -v $PROJECTPATH/$USERPROJECT/*.o
+		local EXECEXTENTION=".exe"
 	fi
-	echo "done*"
-}
-
-make_proj()
-{
-	local ISSRC=$*
-
-	for SRC in $ISSRC
+	PREPATH="../.."
+	for file in $SRCS
 	do
-		local OBJ=${SRC/%.c/%.o}
-		local OBJS="$OBJ $OBJS"
-
-		for HDR in $HDRS
-		do
-			if [ $HDR -nt $OBJ ] || [ $SRC -nt $OBJ ]; then
-				echo "compiling $SRC..."
-				$CC -c -o $BJS $SRC
-			fi
-		done
-	done
-
-	local IOBJS=$*
-
-	for OBJ in $IOBJS
-	do
-		if [ $OBJ -nt $EXEC ]; then
-			echo "bulding $EXEC"
-			$CC -o $EXEC $IOBJS
-			break
+		if ! [ "$file" == "$EXEC.c" ]; then
+			set -x
+			$CC $CFLAGS $file -c -o ${file:0:$((${#file} - 2))}.o $NLFINCLUDES $SDL2INCLUDES $SDLIMAGE2INCLUDES $NLFLIBS
+			set +x
 		fi
 	done
+	set -x
+	$CC -Wl,-R -Wl,./ $CFLAGS ./*.o $EXEC.c -o "$EXEC$EXECEXTENTION" $NLFINCLUDES $SDL2INCLUDES $SDLIMAGE2INCLUDES $NLFLIBS
+	set +x
+
+	#coping build
+	cp $EXEC$EXECEXTENTION $COMPILEPATH/
+	mv *.so $COMPILEPATH/
+	rm -f -v ./*.o ./*.h.gch $EXEC$EXECEXTENTION
+
+	cd $PREPATH
+	PREPATH="./"
 }
 ###############
 
@@ -120,7 +157,7 @@ if ! [ $? = 0 ]; then
 fi
 
 case $ANSWER in
-	1 )
+	1 ) #Create new project
 		echo "ok, lets make a new project"
 		USERPROJECT=$("$BOX" --title "New Project" --inputbox "What's the project name?" 10 60 MyProject 3>&1 1>&2 2>&3)
 		if [ $? = 0 ]; then
@@ -142,14 +179,9 @@ case $ANSWER in
 			exit 4
 		fi
 		make_main $API
-		if [ $API = "C" ]; then
-			#generate makefile
-			cat NLF_SCR/makesNconfigs/c_project_configure > $PROJECTPATH/$USERPROJECT/configure
-			chmod 755 $PROJECTPATH/$USERPROJECT/configure
-		fi
 	;;
 
-	2 )
+	2 ) #Build my project
 		if ! [ -d "$PROJECTPATH" ]; then
 			echo "sorry... any project have been created yet."
 			echo "Perhaps is signal from the gods that you should create your own NLF project! =)"
@@ -165,20 +197,23 @@ case $ANSWER in
 			else
 				proj=${proj:${#PROJECTPATH}}
 				STR[AUX]="${COUNT} ${proj:1}"
+				PROJECTS[AUX]=${proj:1}
 				COUNT+=1
 				AUX+=1
 			fi
 		done
 		USERPROJECT=$($BOX --title "NLF Project builder" --menu "Choose the project" 10 30 2 ${STR[@]} 3>&1 1>&2 2>&3)
-		echo $USERPROJECT
 		if ! [ $? = 0 ]; then
 			echo "Canceled"
 			exit 8
 		fi
+		USERPROJECT=$(($USERPROJECT-1))
+		USERPROJECT=${PROJECTS[USERPROJECT]}
 		if ! [ -d "$PROJECTPATH/$USERPROJECT" ]; then
 			echo "The project \"$USERPROJECT\" do not exit"
 			exit 9;
 		fi
 		echo "ok, lets build your project"
+		make_c_proj -l2l -64
 	;;
 esac
