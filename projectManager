@@ -1,11 +1,11 @@
 #!/bin/bash
 
 ###VARIABLES###
-PROJECTPATH="projects"
+PROJECTPATH="NLF_projects"
 USERPROJECT=""
 PROJECTS=""
 MACHINE_TYPE=`uname -m`
-SYSTEM_TYPE=`uname -o`
+SYSTEM_TYPE=`uname -s`
 #Path to includes and libs
 PREPATH="../.."
 NLFINCLUDES="-I $PREPATH/NLF_SCR"
@@ -45,7 +45,7 @@ check_portability()
 	fi
 
 	# just use whichever was found
-	"$BOX" --msgbox "Message displayed with $BOX" 0 0
+	echo "UI displayed with $BOX"
 }
 
 make_main()
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 		echo "main file generated"
 	else
 		echo "something went wrong..."
-		echo "make_main function got bad argument '$@'"
+		echo "make_main function got bad argument: '$@'"
 		exit 5
 	fi
 }
@@ -80,69 +80,98 @@ make_c_proj()
 {
 	#get parameters
 	case $1 in
-		-l2l )
-			cp BINARIES/*.so $PROJECTPATH/$USERPROJECT/
-			case $2 in
-				-32 )
-					CC="gcc -m32"
-					COMPILEPATH="linux32"
+		-l2l | -l2w | -l2osx | -l2a | -l2ios )
+			case $1 in
+				-l2l )
+					cp BINARIES/*.so $PROJECTPATH/$USERPROJECT/
+					case $2 in
+						-64to32 )
+							CC="gcc -m32"
+							COMPILEPATH="linux32"
+						;;
+
+						-32to64 )
+							echo "build to a 64 linux system from a 32 linux system is not yet supported"
+							exit 14
+						;;
+
+						-64to64 )
+							CC="gcc"
+							COMPILEPATH="linux64"
+						;;
+
+						-32to32 )
+							CC="gcc"
+							COMPILEPATH="linux32"
+						;;
+					esac
 				;;
 
-				-64 )
-					CC="gcc"
-					COMPILEPATH="linux64"
+				-l2w )
+					cp BINARIES/*.dll $PROJECTPATH/$USERPROJECT/
+					case $2 in
+						-32 )
+							CC="i686-w64-mingw32-gcc"
+							COMPILEPATH="windows32"
+						;;
+
+						-64 )
+							CC="x86_64-w64-mingw32-gcc"
+							COMPILEPATH="windows64"
+						;;
+					esac
+				;;
+
+				-l2osx | -l2a | -l2ios )
+					echo "Sorry, option still not supported"
+					exit 15
 				;;
 			esac
+			cd $PROJECTPATH/$USERPROJECT
+			rm -f -v -r $COMPILEPATH
+			create_path $COMPILEPATH
+			echo "$COMPILEPATH"
+
+			#compile the project
+			local SRCS=*.c
+			local EXEC="main"
+			if [ "$1" == "-l2l" ]; then
+				local EXECEXTENTION=""
+			else
+				local EXECEXTENTION=".exe"
+			fi
+			PREPATH="../.."
+			for file in $SRCS
+			do
+				if ! [ "$file" == "$EXEC.c" ]; then
+					set -x
+					$CC $CFLAGS $file -c -o ${file:0:$((${#file} - 2))}.o $NLFINCLUDES $SDL2INCLUDES $SDLIMAGE2INCLUDES $NLFLIBS
+					set +x
+				fi
+			done
+			set -x
+			$CC -Wl,-R -Wl,./ $CFLAGS ./*.o $EXEC.c -o "$EXEC$EXECEXTENTION" $NLFINCLUDES $SDL2INCLUDES $SDLIMAGE2INCLUDES $NLFLIBS
+			set +x
+
+			#coping build
+			cp $EXEC$EXECEXTENTION $COMPILEPATH/
+			mv *.so $COMPILEPATH/
+			rm -f -v ./*.o ./*.h.gch $EXEC$EXECEXTENTION
+
+			cd $PREPATH
+			PREPATH="./"
 		;;
 
-		-l2w )
-			cp BINARIES/*.dll $PROJECTPATH/$USERPROJECT/
-			case $2 in
-				-32 )
-					CC="i686-w64-mingw32-gcc"
-					COMPILEPATH="windows32"
-				;;
+		-osx2l | -osx2w | -osx2osx | -osx2a | -osx2io )
+			echo "Sorry, specific OSX building tools not developed yet"
+			exit 12
+		;;
 
-				-64 )
-					CC="x86_64-w64-mingw32-gcc"
-					COMPILEPATH="windows64"
-				;;
-			esac
+		-w2l | -w2w | -w2osx | -w2a | -w2io )
+			echo "Sorry, windows building tools not developed yet"
+			exit 16
 		;;
 	esac
-	cd $PROJECTPATH/$USERPROJECT
-	rm -f -v -r $COMPILEPATH
-	create_path $COMPILEPATH
-	echo "$COMPILEPATH"
-
-	#compile the project
-	local SRCS=*.c
-	local EXEC="main"
-	if [ "$1" == "-l2l" ]; then
-		local EXECEXTENTION=""
-	else
-		local EXECEXTENTION=".exe"
-	fi
-	PREPATH="../.."
-	for file in $SRCS
-	do
-		if ! [ "$file" == "$EXEC.c" ]; then
-			set -x
-			$CC $CFLAGS $file -c -o ${file:0:$((${#file} - 2))}.o $NLFINCLUDES $SDL2INCLUDES $SDLIMAGE2INCLUDES $NLFLIBS
-			set +x
-		fi
-	done
-	set -x
-	$CC -Wl,-R -Wl,./ $CFLAGS ./*.o $EXEC.c -o "$EXEC$EXECEXTENTION" $NLFINCLUDES $SDL2INCLUDES $SDLIMAGE2INCLUDES $NLFLIBS
-	set +x
-
-	#coping build
-	cp $EXEC$EXECEXTENTION $COMPILEPATH/
-	mv *.so $COMPILEPATH/
-	rm -f -v ./*.o ./*.h.gch $EXEC$EXECEXTENTION
-
-	cd $PREPATH
-	PREPATH="./"
 }
 ###############
 
@@ -198,8 +227,8 @@ case $ANSWER in
 				proj=${proj:${#PROJECTPATH}}
 				STR[AUX]="${COUNT} ${proj:1}"
 				PROJECTS[AUX]=${proj:1}
-				COUNT+=1
-				AUX+=1
+				COUNT=$(($COUNT + 1))
+				AUX=$(($AUX + 1))
 			fi
 		done
 		USERPROJECT=$($BOX --title "NLF Project builder" --menu "Choose the project" 10 30 2 ${STR[@]} 3>&1 1>&2 2>&3)
@@ -213,7 +242,101 @@ case $ANSWER in
 			echo "The project \"$USERPROJECT\" do not exit"
 			exit 9;
 		fi
+
 		echo "ok, lets build your project"
-		make_c_proj -l2l -64
+		echo "Your MACHINE_TYPE: $MACHINE_TYPE"
+		echo "Your SYSTEM_TYPE: $SYSTEM_TYPE"
+
+		case $SYSTEM_TYPE in
+			Linux )
+				echo "Linux system detected"
+				BUILDTO=' l2l'' Linux '' l2w'' Windows'' l2osx'' OSX'' l2a'' Android'' l2ios'' iOS'
+			;;
+
+			Darwin )
+				echo "OSX system detected"
+				if ("$BOX" --title "#WARNING#" --yesno "The project building for OSX isn't developed yet. Do you wanna try building using linux settings? It may work, really =]" 10 60) then
+					BUILDTO=' l2l'' Linux '' l2w'' Windows'' l2osx'' OSX'' l2a'' Android'' l2ios'' iOS'
+				else
+					BUILDTO=' osx2l'' Linux '' osx2w'' Windows'' osx2osx'' OSX'' osx2a'' Android'' osx2io'' iOS'
+				fi
+			;;
+
+			UWIN-W7 | CYGWIN_NT-6.1* )
+				echo "Windows system detected"
+				BUILDTO=' w2l'' Linux '' w2w'' Windows'' w2osx'' OSX'' w2a'' Android'' w2io'' iOS'
+			;;
+
+			*)
+				BUILDTO="System not supported"
+				exit 11
+			;;
+
+		esac
+
+		BUILDTO=$("$BOX" --title "Building For" --menu "Build your projecto to" 15 35 6 "me" "$SYSTEM_TYPE" $BUILDTO 3>&1 1>&2 2>&3)
+		if ! [ $? = 0 ]; then
+			echo "Canceled"
+			exit 10
+		fi
+
+		if [ "$BUILDTO" == "me" ]; then
+			case $SYSTEM_TYPE in
+				Linux )
+					BUILDTO="l2l"
+				;;
+
+				Darwin )
+					BUILDTO="osx2osx"
+				;;
+
+				UWIN-W7 | CYGWIN_NT-6.1* )
+					BUILDTO="w2w"
+				;;
+
+			esac
+		fi
+
+		FLAG="-$BUILDTO"
+		BUILDTO=$("$BOX" --title "Building For" --menu "Build your projecto to" 15 35 3 "me" "$MACHINE_TYPE" "32" "32 bits system" "64" "64 bits system" 3>&1 1>&2 2>&3)
+		if ! [ $? = 0 ]; then
+			echo "Canceled"
+			exit 10
+		fi
+
+		if [ "$BUILDTO" == "me" ]; then
+			case $MACHINE_TYPE in
+				x86_64 | amd64 )
+					BUILDTO="64"
+				;;
+
+				x86 | i*86 )
+					BUILDTO="32"
+				;;
+
+				* )
+					echo "something went really wrong. Architecture not recognized"
+					echo "try not to use the the 'me' next time"
+					exit 13
+				;;
+
+			esac
+		fi
+
+		if [ "$MACHINE_TYPE" == "x86_64" ] || [ "$MACHINE_TYPE" == "amd64" ]; then
+			if [ "$BUILDTO" == "64" ]; then
+				FLAG="$FLAG -64to64"
+			else
+				FLAG="$FLAG -64to32"
+			fi
+		elif [ "$MACHINE_TYPE" == "x86" ] || [ "$MACHINE_TYPE" == "i*86" ]; then
+			if [ "$BUILDTO" == "64" ]; then
+				FLAG="$FLAG -32to64"
+			else
+				FLAG="$FLAG -32to32"
+			fi
+		fi
+
+		make_c_proj $FLAG
 	;;
 esac
