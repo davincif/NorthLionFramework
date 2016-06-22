@@ -6,33 +6,20 @@ USERPROJECT=""
 PROJECTS=""
 MACHINE_TYPE=`uname -m`
 SYSTEM_TYPE=`uname -s`
-#Path to includes and libs
-PREPATH="../.."
-NLFINCLUDES="-I $PREPATH/NLF_SCR"
-NLFLIBS="-L./ -lNLF"
-SDL2INCLUDES="-I $PREPATH/SDL2/include"
-SDLIMAGE2INCLUDES="-I $PREPATH/SDL2/SDL_image"
-CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized"
+MYABSPATH=""
 ###############
 
-
 ###FUNCTIONS###
-create_path()
+get_abs_filename()
 {
-	if ! [ -d "$1" ]; then
-		mkdir "$1"
-		echo "Path '$1' created."
-	else
-		echo "Path '$1' already exist."
-		if [ "$2" == "--exclusive" ]; then
-			exit 2
-		fi
-	fi
+#$1 : relative filename
+#use it like this: myabsfile=$(get_abs_filename "../../foo/bar/file.txt")
+	echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 }
 
 check_portability()
 {
-	#check whether whiptail or dialog is installed
+#check whether whiptail or dialog is installed
 	#(choosing the first command found)
 	read BOX <<< "$(which whiptail dialog 2> /dev/null)"
 
@@ -46,6 +33,42 @@ check_portability()
 
 	# just use whichever was found
 	echo "UI displayed with $BOX"
+}
+
+init()
+{
+	local AUX
+
+	#defining absolute path
+	AUX=${0##*/}
+	MYABSPATH=$(get_abs_filename "$AUX")
+	MYABSPATH=${MYABSPATH:0:$((${#MYABSPATH}-${#AUX}-1))}
+
+	#Path to includes and libs
+	NLFINCLUDES="-I $MYABSPATH/NLF_SCR"
+	NLFLIBS="-L./ -lNLF"
+	SDL2INCLUDES="-I $MYABSPATH/SDL2/include"
+	SDLIMAGE2INCLUDES="-I $MYABSPATH/SDL2/SDL_image"
+	CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized"
+
+	#checking UI portability
+	check_portability
+}
+
+create_path()
+{
+	if ! [ -d "$1" ]; then
+		mkdir "$1"
+		echo "Path '$1' created."
+		return 1
+	else
+		echo "Path '$1' already exist."
+		if [ "$2" == "--exclusive" ]; then
+			exit 2
+		fi
+	fi
+
+	return 0
 }
 
 make_main()
@@ -76,6 +99,78 @@ int main(int argc, char *argv[])
 	fi
 }
 
+build_nlf()
+{
+#$1 - for what system do you wanna build the user project
+#$2 - for what architecture do you wanna build the user project
+	local RET
+	local DIRECTORY
+
+	echo "building North Lion Framework for $1"
+	cd $MYABSPATH/BINARIES
+	case $1 in
+		*2l )
+			DIRECTORY="linux${2:1}"
+		;;
+
+		*2w )
+			DIRECTORY="windows${2:1}"
+		;;
+
+		*2osx )
+			DIRECTORY="osx${2:1}"
+		;;
+
+		*2a )
+			DIRECTORY="android${2:1}"
+		;;
+
+		*2ios )
+			DIRECTORY="ios${2:1}"
+		;;
+	esac
+	create_path $DIRECTORY
+	RET=$?
+	if [ $RET == 0 ]; then
+		if ("$BOX" --title "NLF already built" --yesno "NLF lib is already built for the system you're trying to export. Do you with to rebuilt it?" 10 60) then
+			rm -v -f -r $DIRECTORY
+			create_path $DIRECTORY
+		else
+			cd $MYABSPATH
+			return 0
+		fi
+	fi
+
+	cd $MYABSPATH/NLF_SCR
+	case $SYSTEM_TYPE in
+		Linux )
+			./configure $1 $2
+			make clean-all
+			make
+			if [[ "$DIRECTORY" == *"linux"* ]]; then
+				mv -v ../BINARIES/*.so ../BINARIES/$DIRECTORY
+			elif [[ "$DIRECTORY" == *"windows"* ]]; then
+				mv -v ../BINARIES/*.dll ../BINARIES/$DIRECTORY
+			fi
+			make clean-all
+			./configure -c
+		;;
+
+		Darwin )
+			rm -r "../BINARIES/${1:1}${2:1:2}"
+			echo "Specific OSX building tool still not developed"
+			exit 17
+		;;
+
+		UWIN-W7 | CYGWIN_NT-6.1* )
+			rm -r "../BINARIES/${1:1}${2:1:2}"
+			echo "Windows building tool still not developed"
+			exit 18
+		;;
+	esac
+	cd $MYABSPATH
+}
+
 make_c_proj()
 {
 	#get parameters
@@ -83,24 +178,27 @@ make_c_proj()
 		-l2l | -l2w | -l2osx | -l2a | -l2ios )
 			case $1 in
 				-l2l )
-					cp BINARIES/*.so $PROJECTPATH/$USERPROJECT/
 					case $2 in
 						-64to32 )
+							cp /BINARIES/linux32/*.so $PROJECTPATH/$USERPROJECT/
 							CC="gcc -m32"
 							COMPILEPATH="linux32"
 						;;
 
 						-32to64 )
+							cp /BINARIES/linux64/*.so $PROJECTPATH/$USERPROJECT/
 							echo "build to a 64 linux system from a 32 linux system is not yet supported"
 							exit 14
 						;;
 
 						-64to64 )
+							cp /BINARIES/linux64/*.so $PROJECTPATH/$USERPROJECT/
 							CC="gcc"
 							COMPILEPATH="linux64"
 						;;
 
 						-32to32 )
+							cp /BINARIES/linux32/*.so $PROJECTPATH/$USERPROJECT/
 							CC="gcc"
 							COMPILEPATH="linux32"
 						;;
@@ -108,14 +206,15 @@ make_c_proj()
 				;;
 
 				-l2w )
-					cp BINARIES/*.dll $PROJECTPATH/$USERPROJECT/
 					case $2 in
-						-32 )
+						-64to32 | -32to32 )
+							cp $MYABSPATH/BINARIES/windows32/*.dll $PROJECTPATH/$USERPROJECT/
 							CC="i686-w64-mingw32-gcc"
 							COMPILEPATH="windows32"
 						;;
 
-						-64 )
+						-64to64 | -32to64 )
+							cp /BINARIES/windows64/*.dll $PROJECTPATH/$USERPROJECT/
 							CC="x86_64-w64-mingw32-gcc"
 							COMPILEPATH="windows64"
 						;;
@@ -123,10 +222,11 @@ make_c_proj()
 				;;
 
 				-l2osx | -l2a | -l2ios )
-					echo "Sorry, option still not supported"
+					echo "Sorry, compiling from linux to osx, android or ios still not supported"
 					exit 15
 				;;
 			esac
+			
 			cd $PROJECTPATH/$USERPROJECT
 			rm -f -v -r $COMPILEPATH
 			create_path $COMPILEPATH
@@ -140,7 +240,6 @@ make_c_proj()
 			else
 				local EXECEXTENTION=".exe"
 			fi
-			PREPATH="../.."
 			for file in $SRCS
 			do
 				if ! [ "$file" == "$EXEC.c" ]; then
@@ -155,19 +254,23 @@ make_c_proj()
 
 			#coping build
 			cp $EXEC$EXECEXTENTION $COMPILEPATH/
-			mv *.so $COMPILEPATH/
+			if [ "$EXECEXTENTION" == ".exe" ]; then
+				mv -v *.dll $COMPILEPATH/
+			else
+				mv -v *.so $COMPILEPATH/
+			fi
+			#mv -v $EXEC$EXECEXTENTION $COMPILEPATH/
 			rm -f -v ./*.o ./*.h.gch $EXEC$EXECEXTENTION
 
-			cd $PREPATH
-			PREPATH="./"
+			cd $MYABSPATH
 		;;
 
-		-osx2l | -osx2w | -osx2osx | -osx2a | -osx2io )
+		-osx2l | -osx2w | -osx2osx | -osx2a | -osx2ios )
 			echo "Sorry, specific OSX building tools not developed yet"
 			exit 12
 		;;
 
-		-w2l | -w2w | -w2osx | -w2a | -w2io )
+		-w2l | -w2w | -w2osx | -w2a | -w2ios )
 			echo "Sorry, windows building tools not developed yet"
 			exit 16
 		;;
@@ -176,7 +279,7 @@ make_c_proj()
 ###############
 
 ##START
-check_portability
+init
 ANSWER=$("$BOX" --title "NLF Project Manager" --menu "What do you need?" 10 30 2 \
 "1" "Create new project" \
 "2" "Build my project" 3>&1 1>&2 2>&3)
@@ -258,20 +361,19 @@ case $ANSWER in
 				if ("$BOX" --title "#WARNING#" --yesno "The project building for OSX isn't developed yet. Do you wanna try building using linux settings? It may work, really =]" 10 60) then
 					BUILDTO=' l2l'' Linux '' l2w'' Windows'' l2osx'' OSX'' l2a'' Android'' l2ios'' iOS'
 				else
-					BUILDTO=' osx2l'' Linux '' osx2w'' Windows'' osx2osx'' OSX'' osx2a'' Android'' osx2io'' iOS'
+					BUILDTO=' osx2l'' Linux '' osx2w'' Windows'' osx2osx'' OSX'' osx2a'' Android'' osx2ios'' iOS'
 				fi
 			;;
 
 			UWIN-W7 | CYGWIN_NT-6.1* )
 				echo "Windows system detected"
-				BUILDTO=' w2l'' Linux '' w2w'' Windows'' w2osx'' OSX'' w2a'' Android'' w2io'' iOS'
+				BUILDTO=' w2l'' Linux '' w2w'' Windows'' w2osx'' OSX'' w2a'' Android'' w2ios'' iOS'
 			;;
 
 			*)
 				BUILDTO="System not supported"
 				exit 11
 			;;
-
 		esac
 
 		BUILDTO=$("$BOX" --title "Building For" --menu "Build your projecto to" 15 35 6 "me" "$SYSTEM_TYPE" $BUILDTO 3>&1 1>&2 2>&3)
@@ -293,12 +395,11 @@ case $ANSWER in
 				UWIN-W7 | CYGWIN_NT-6.1* )
 					BUILDTO="w2w"
 				;;
-
 			esac
 		fi
+		FLAGSYS="-$BUILDTO"
 
-		FLAG="-$BUILDTO"
-		BUILDTO=$("$BOX" --title "Building For" --menu "Build your projecto to" 15 35 3 "me" "$MACHINE_TYPE" "32" "32 bits system" "64" "64 bits system" 3>&1 1>&2 2>&3)
+		BUILDTO=$("$BOX" --title "Building For" --menu "Build your projecto to" 10 30 3 "me" "$MACHINE_TYPE" "32" "32 bits system" "64" "64 bits system" 3>&1 1>&2 2>&3)
 		if ! [ $? = 0 ]; then
 			echo "Canceled"
 			exit 10
@@ -319,24 +420,24 @@ case $ANSWER in
 					echo "try not to use the the 'me' next time"
 					exit 13
 				;;
-
 			esac
 		fi
 
 		if [ "$MACHINE_TYPE" == "x86_64" ] || [ "$MACHINE_TYPE" == "amd64" ]; then
 			if [ "$BUILDTO" == "64" ]; then
-				FLAG="$FLAG -64to64"
+				FLAGARCH="-64to64"
 			else
-				FLAG="$FLAG -64to32"
+				FLAGARCH="-64to32"
 			fi
 		elif [ "$MACHINE_TYPE" == "x86" ] || [ "$MACHINE_TYPE" == "i*86" ]; then
 			if [ "$BUILDTO" == "64" ]; then
-				FLAG="$FLAG -32to64"
+				FLAGARCH="-32to64"
 			else
-				FLAG="$FLAG -32to32"
+				FLAGARCH="-32to32"
 			fi
 		fi
 
-		make_c_proj $FLAG
+		build_nlf $FLAGSYS "-${FLAGARCH:5}"
+		make_c_proj $FLAGSYS $FLAGARCH
 	;;
 esac
