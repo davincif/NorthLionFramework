@@ -46,9 +46,9 @@ init()
 
 	#Path to includes and libs
 	NLFINCLUDES="-I $MYABSPATH/NLF_SCR"
-	NLFLIBS="-L./ -lNLF"
 	SDL2INCLUDES="-I $MYABSPATH/SDL2/include"
-	SDLIMAGE2INCLUDES="-I $MYABSPATH/SDL2/SDL_image"
+	NLFLIBS=""
+	SDL2IMAGE2INCLUDES="-I $MYABSPATH/SDL2/SDL_image"
 	CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized"
 
 	#checking UI portability
@@ -145,14 +145,11 @@ build_nlf()
 	case $SYSTEM_TYPE in
 		Linux )
 			./configure $1 $2
-			make clean-all
-			make
 			if [[ "$DIRECTORY" == *"linux"* ]]; then
 				mv -v ../BINARIES/*.so ../BINARIES/$DIRECTORY
 			elif [[ "$DIRECTORY" == *"windows"* ]]; then
 				mv -v ../BINARIES/*.dll ../BINARIES/$DIRECTORY
 			fi
-			make clean-all
 			./configure -c
 		;;
 
@@ -173,32 +170,41 @@ build_nlf()
 
 make_c_proj()
 {
-	#get parameters
+	local EXECEXTENTION=""
+
+	#creating libs' directory
+	#tried to compile with the libs all in one place, but I couldn't
+	#rm -f -v -r $PROJECTPATH/$USERPROJECT/libs
+	#create_path $PROJECTPATH/$USERPROJECT/libs/
+
+	#get parameters and preparing compiler and libs
 	case $1 in
 		-l2l | -l2w | -l2osx | -l2a | -l2ios )
 			case $1 in
 				-l2l )
 					case $2 in
 						-64to32 )
-							cp /BINARIES/linux32/*.so $PROJECTPATH/$USERPROJECT/
+							#cp not developed
 							CC="gcc -m32"
 							COMPILEPATH="linux32"
 						;;
 
 						-32to64 )
-							cp /BINARIES/linux64/*.so $PROJECTPATH/$USERPROJECT/
+							#cp not developed
 							echo "build to a 64 linux system from a 32 linux system is not yet supported"
 							exit 14
 						;;
 
 						-64to64 )
-							cp /BINARIES/linux64/*.so $PROJECTPATH/$USERPROJECT/
+							NLFLIBS="-L $MYABSPATH/SDL2/lib -lSDL2main -lSDL2 -lSDL2_image -L ./ -lNLF"
+							cp SDL2/lib/*.so* $PROJECTPATH/$USERPROJECT/
 							CC="gcc"
 							COMPILEPATH="linux64"
 						;;
 
 						-32to32 )
-							cp /BINARIES/linux32/*.so $PROJECTPATH/$USERPROJECT/
+							NLFLIBS="-L $MYABSPATH/SDL2/lib -lSDL2main -lSDL2 -lSDL2_image -L ./ -lNLF"
+							cp SDL2/lib/*.so* $PROJECTPATH/$USERPROJECT/
 							CC="gcc"
 							COMPILEPATH="linux32"
 						;;
@@ -206,15 +212,22 @@ make_c_proj()
 				;;
 
 				-l2w )
+					EXECEXTENTION=".exe"
 					case $2 in
 						-64to32 | -32to32 )
-							cp $MYABSPATH/BINARIES/windows32/*.dll $PROJECTPATH/$USERPROJECT/
+							NLFLIBS="-L $MYABSPATH/SDL2/4windows/SDL2/32/ -lmingw32 -lSDL2main -lSDL2 -L $MYABSPATH/SDL2/4windows/SDL2_image/32/ -lSDL2_image -L ./ -lNLF"
+							cp SDL2/4windows/SDL2/32/*.lib $PROJECTPATH/$USERPROJECT/
+							cp SDL2/4windows/SDL2/32/*.dll $PROJECTPATH/$USERPROJECT/
+							cp SDL2/4windows/SDL2_image/32/*.dll $PROJECTPATH/$USERPROJECT/
 							CC="i686-w64-mingw32-gcc"
 							COMPILEPATH="windows32"
 						;;
 
 						-64to64 | -32to64 )
-							cp /BINARIES/windows64/*.dll $PROJECTPATH/$USERPROJECT/
+							NLFLIBS="-L $MYABSPATH/SDL2/4windows/SDL2/64/ -lmingw32 -lSDL2main -lSDL2 -L $MYABSPATH/SDL2/4windows/SDL2_image/64/ -lSDL2_image -L ./ -lNLF"
+							cp SDL2/4windows/SDL2/64/*.lib $PROJECTPATH/$USERPROJECT/
+							cp SDL2/4windows/SDL2/64/*.dll $PROJECTPATH/$USERPROJECT/
+							cp SDL2/4windows/SDL2_image/64/*.dll $PROJECTPATH/$USERPROJECT/
 							CC="x86_64-w64-mingw32-gcc"
 							COMPILEPATH="windows64"
 						;;
@@ -227,40 +240,34 @@ make_c_proj()
 				;;
 			esac
 			
+			#preparing direcotries
 			cd $PROJECTPATH/$USERPROJECT
 			rm -f -v -r $COMPILEPATH
 			create_path $COMPILEPATH
-			echo "$COMPILEPATH"
+			cd ../../
+			cp BINARIES/$COMPILEPATH/* $PROJECTPATH/$USERPROJECT/
+			cd $PROJECTPATH/$USERPROJECT
+			echo "all libs set"
 
 			#compile the project
 			local SRCS=*.c
 			local EXEC="main"
-			if [ "$1" == "-l2l" ]; then
-				local EXECEXTENTION=""
-			else
-				local EXECEXTENTION=".exe"
-			fi
+
 			for file in $SRCS
 			do
-				if ! [ "$file" == "$EXEC.c" ]; then
-					set -x
-					$CC $CFLAGS $file -c -o ${file:0:$((${#file} - 2))}.o $NLFINCLUDES $SDL2INCLUDES $SDLIMAGE2INCLUDES $NLFLIBS
-					set +x
-				fi
+				set -x
+				$CC $CFLAGS $NLFINCLUDES $SDL2INCLUDES $SDL2IMAGE2INCLUDES -fPIC -c $file -o ${file:0:$((${#file}-1))}o
+				set +x
 			done
 			set -x
-			$CC -Wl,-R -Wl,./ $CFLAGS ./*.o $EXEC.c -o "$EXEC$EXECEXTENTION" $NLFINCLUDES $SDL2INCLUDES $SDLIMAGE2INCLUDES $NLFLIBS
+			$CC -Wl,-rpath=./ $CFLAGS $NLFINCLUDES $SDL2INCLUDES $SDL2IMAGE2INCLUDES ./*.o -o "$EXEC$EXECEXTENTION" $NLFLIBS
 			set +x
 
 			#coping build
-			cp $EXEC$EXECEXTENTION $COMPILEPATH/
-			if [ "$EXECEXTENTION" == ".exe" ]; then
-				mv -v *.dll $COMPILEPATH/
-			else
-				mv -v *.so $COMPILEPATH/
-			fi
-			#mv -v $EXEC$EXECEXTENTION $COMPILEPATH/
+			mv ./*dll ./*.so* ./*.lib $COMPILEPATH/
+			mv $EXEC$EXECEXTENTION $COMPILEPATH/
 			rm -f -v ./*.o ./*.h.gch $EXEC$EXECEXTENTION
+			cp -R data/ $COMPILEPATH/
 
 			cd $MYABSPATH
 		;;
@@ -296,6 +303,7 @@ case $ANSWER in
 			echo "chosen path: " $PROJECTPATH/$USERPROJECT
 			create_path $PROJECTPATH
 			create_path "$PROJECTPATH/$USERPROJECT" --exclusive
+			create_path "$PROJECTPATH/$USERPROJECT/data"
 		else
 			echo "Canceled"
 			exit 3
@@ -311,6 +319,11 @@ case $ANSWER in
 			exit 4
 		fi
 		make_main $API
+		if [ "$API" == "C" ]; then
+			$BOX --title "All ready already =)" --msgbox "Now, edit the main.c file at the mark, add as many .h and .c file as you need. And do not forget, put all data you'll need insed \"data/\" inside your project's folder" 10 60
+		elif [ "$API" == "lua" ]; then
+			$BOX --title "All ready already =)" --msgbox "Now, edit the main.lua file at the mark, add as many .lua scripts as you need. And do not forget, put all data you'll need insed \"data/\" inside your project's folder" 10 60
+		fi
 	;;
 
 	2 ) #Build my project
@@ -437,6 +450,7 @@ case $ANSWER in
 			fi
 		fi
 
+set -x
 		build_nlf $FLAGSYS "-${FLAGARCH:5}"
 		make_c_proj $FLAGSYS $FLAGARCH
 	;;

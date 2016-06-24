@@ -32,7 +32,7 @@ install_help()
 	do not install any missing programm
 --no-installing-built
 	do not install the third party sources after compiling it
-#CAUTION: only use theses flags only if you really know what you're doing, once it may to NLF do not work properly or do not work at all =/"
+#CAUTION: use theses flags only if you really know what you're doing, once it may do NLF do not work properly or do not work at all =/"
 }
 ###############
 
@@ -206,28 +206,24 @@ fi
 mkdir "SDL2/$WINSTUFF"
 mkdir  "SDL2/$WINSTUFF/SDL2"
 mkdir  "SDL2/$WINSTUFF/SDL2/64"
-mkdir  "SDL2/$WINSTUFF/SDL2/64/bin"
 mkdir  "SDL2/$WINSTUFF/SDL2/32"
-mkdir  "SDL2/$WINSTUFF/SDL2/32/bin"
 mkdir  "SDL2/$WINSTUFF/SDL2_image"
 mkdir  "SDL2/$WINSTUFF/SDL2_image/64"
-mkdir  "SDL2/$WINSTUFF/SDL2_image/64/bin"
 mkdir  "SDL2/$WINSTUFF/SDL2_image/32"
-mkdir  "SDL2/$WINSTUFF/SDL2_image/32/bin"
 echo "	unpacking..."
 tar -zvxf "$ThirdSRC/$WINSTUFF/$SDL2_WIN_file" > $TRASHFILE
 mv $SDL2_WIN/i686-w64-mingw32/lib/*.a SDL2/4windows/SDL2/32
 mv $SDL2_WIN/lib/x86/*.lib SDL2/4windows/SDL2/32
-mv $SDL2_WIN/lib/x86/*.dll SDL2/4windows/SDL2/32/bin
+mv $SDL2_WIN/lib/x86/*.dll SDL2/4windows/SDL2/32
 mv $SDL2_WIN/x86_64-w64-mingw32/lib/*.a SDL2/4windows/SDL2/64
 mv $SDL2_WIN/lib/x64/*.lib SDL2/4windows/SDL2/64
-mv $SDL2_WIN/lib/x64/*.dll SDL2/4windows/SDL2/64/bin
+mv $SDL2_WIN/lib/x64/*.dll SDL2/4windows/SDL2/64
 rm -R $SDL2_WIN
 tar -zvxf "$ThirdSRC/$WINSTUFF/$SDL2_IMAGE_WIN_file" > $TRASHFILE
 mv $SDL2_IMAGE_WIN/i686-w64-mingw32/lib/*.a SDL2/4windows/SDL2_image/32
-mv $SDL2_IMAGE_WIN/i686-w64-mingw32/bin/*.dll SDL2/4windows/SDL2_image/32/bin
+mv $SDL2_IMAGE_WIN/i686-w64-mingw32/bin/*.dll SDL2/4windows/SDL2_image/32
 mv $SDL2_IMAGE_WIN/x86_64-w64-mingw32/lib/*.a SDL2/4windows/SDL2_image/64
-mv $SDL2_IMAGE_WIN/x86_64-w64-mingw32/bin/*.dll SDL2/4windows/SDL2_image/64/bin
+mv $SDL2_IMAGE_WIN/x86_64-w64-mingw32/bin/*.dll SDL2/4windows/SDL2_image/64
 rm -R $SDL2_IMAGE_WIN
 mkdir "lua/$WINSTUFF"
 tar -zvxf "$ThirdSRC/$WINSTUFF/$LUA_WIN32.tar.gz" > $TRASHFILE

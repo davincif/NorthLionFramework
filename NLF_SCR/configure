@@ -69,12 +69,10 @@ Also, this script considers that you're on a GNU/linux 64bits machine.
 
 makerfile_l2l()
 {
-	echo "Makefile for linux $MACHINE_TYPE to linux $1 bits..."
-	printf "#the compiler\n" > Makefile
 	case $MACHINE_TYPE in
 		x86_64 | amd64 )
 			if [ $1 = "-64" ]; then
-				printf "CC = gcc\n\n" >> Makefile
+				local CC=gcc
 			elif [ $1 = "-32" ]; then
 				echo "Compiling from linux 64 for linux 32 note implemented yet"
 				exit 2
@@ -89,7 +87,7 @@ makerfile_l2l()
 				echo "Compiling from linux 32 for linux 64 note implemented yet"
 				exit 2
 			elif [ $1 = "-32" ]; then
-				printf "CC = gcc\n\n" >> Makefile
+				local CC=gcc
 			else
 				echo "Something went really wrong... arguments recived by makerfile_l2l: $@"
 				exit 16 
@@ -102,66 +100,77 @@ makerfile_l2l()
 			exit 1
 		;;
 	esac
-	printf "#the standart compilation flags of the project
-CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized -lm
+	local CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized -lm"
+	#path to the folder's root, where the holy not build framework is. Relate to this Makefile
+	local PREPATH=".."
+	#Path to the SDL, SDL_image and Lua includes and libs
+	local SDL2INCLUDES="-I $PREPATH/SDL2/include"
+	local SDL2LIBS="-L $PREPATH/SDL2/lib/ -lSDL2main -lSDL2 -lSDL2_test"
+	local SDLIMAGE2INCLUDES="-I $PREPATH/SDL2/SDL_image"
+	local SDLIMAGE2LIBS="-L $PREPATH/SDL2/lib/ -lSDL2_image"
+	#LUAINCLUDES = -I $PREPATH/lua/
+	#LUALIB = $PREPATH/lua/ -llua -lm" >> Makefile
+	#Where to put the compiled program
+	local COMPILEPATH="$PREPATH/BINARIES"
 
-#path to the folder's root, where the holy not build framework is. Relate to this Makefile
-PREPATH = ..\n" >> Makefile
+	echo "Makefile for linux to linux ${1:1} bits..."
+	for file in ./*.c
+	do
+		set -x
+		$CC $CFLAGS $SDL2INCLUDES $SDLIMAGE2INCLUDES -fPIC -c $file $SDL2LIBS $SDLIMAGE2LIBS
+		set +x
+	done
+	mv -v ./*.o $PREPATH/BINARIES/
+	set -x
+	$CC $CFLAGS $SDL2INCLUDES $SDLIMAGE2INCLUDES -shared $COMPILEPATH/*.o -o $COMPILEPATH/libNLF.so $SDL2LIBS $SDLIMAGE2LIBS
+	set +x
 
-	printf "
-#Path to the SDL, SDL_image and Lua includes and libs
-SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
-SDL2LIBS = -L$DS(PREPATH)/SDL2/lib/ -lSDL2 -lSDL2main -lSDL2_test
-SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
-SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/lib/ -lSDL2_image" >> Makefile
-
-	printf "
-#LUAINCLUDES = -I $DS(PREPATH)/lua/
-#LUALIB = $DS(PREPATH)/lua/ -llua -lm" >> Makefile
-
-	printf "\n
-#Where to put the compiled program
-COMPILEPATH = $DS(PREPATH)/BINARIES/\n" >> Makefile
-
-	cat makesNconfigs/make_config >> Makefile
-	echo "*done*"
+	echo "NLF compiled"
 }
 
 makerfile_l2w()
 {
-	echo "Makefile for linux to windows $1 bits..."
-	printf "#the compiler\n" > Makefile
 	if [ $1 = "-64" ]; then
-		printf "CC = x86_64-w64-mingw32-gcc\n\n" > Makefile
+		local CC=x86_64-w64-mingw32-gcc
 	elif [ $1 = "-32" ]; then
-		printf "CC = i686-w64-mingw32-gcc\n\n" > Makefile
+		local CC=i686-w64-mingw32-gcc
 	fi
 
-	printf "#the standart compilation flags of the project
-CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized
+	local CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized"
+	local PREPATH=".."
+	#Path to the SDL, SDL_image and Lua includes and libs
+	local SDL2INCLUDES="-I $PREPATH/SDL2/include"
+	local SDL2LIBS="-L $PREPATH/SDL2/4windows/SDL2/${1:1} -lmingw32 -lSDL2main -lSDL2"
+	local SDLIMAGE2INCLUDES="-I $PREPATH/SDL2/SDL_image"
+	local SDLIMAGE2LIBS="-L $PREPATH/SDL2/4windows/SDL2_image/${1:1} -lSDL2_image"
+	#LUAINCLUDES = -I $PREPATH/lua/
+	#LUALIB = -L $PREPATH/lua/ -llua -lm
+	#Where to put the compiled program
+	local COMPILEPATH="$PREPATH/BINARIES"
 
-#path to the folder's root, where the holy not build framework is. Relate to this Makefile
-PREPATH = ..
 
-#Path to the SDL, SDL_image and Lua includes and libs
-SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
-SDL2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2/${1:1} -lmingw32 -lSDL2main -lSDL2
-SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
-SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2_image/${1:1} -lSDL2_image
-#LUAINCLUDES = -I $DS(PREPATH)/lua/
-#LUALIB = -L $DS(PREPATH)/lua/ -llua -lm
+	echo "Makefile for linux to windows ${1:1} bits..."
+	for file in ./*.c
+	do
+		set -x
+		$CC $CFLAGS $SDL2INCLUDES $SDLIMAGE2INCLUDES -fPIC -c $file $SDL2LIBS $SDLIMAGE2LIBS
+		set +x
+	done
+	mv -v ./*.o $PREPATH/BINARIES/
+	set -x
+	$CC $CFLAGS $SDL2INCLUDES $SDLIMAGE2INCLUDES -shared $COMPILEPATH/*.o -o $COMPILEPATH/libNLF.dll $SDL2LIBS $SDLIMAGE2LIBS
+	set +x
 
-#Where to put the compiled program
-COMPILEPATH = $DS(PREPATH)/BINARIES/" >> Makefile
-
-	cat makesNconfigs/make_config_win >> Makefile
-	echo "*done*"
+	echo "NLF compiled"
 }
 
 clean_sutff()
 {
-	make clean-soft
-	rm -f -v "Makefile"
+	#Find a better way to do this than '../BINARIES'!!
+	rm -f -v "Makefile" ./*.o ./*h.gch ../BINARIES/*.o
+	if [ "$1" == "--all" ]; then
+		rm -f -v ../BINARIES/*.dll ../BINARIES/*.so
+	fi
 }
 ###############
 
