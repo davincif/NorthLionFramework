@@ -4,12 +4,12 @@
 /*CLIBRARIES*/
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 /************/
 
 /*EXTERNAL LIBRARIES*/
 #include "SDL.h"
 #include "SDL_image.h"
-#include "SDL_mutex.h"
 /*********************/
 
 /*INTERNAL LIBRARIES*/
@@ -27,8 +27,8 @@ static SDL_RendererInfo rendererInfo;
 static NLF_bool rendererInfoUnknown; //in case it was impossible to get information about renderer, set to NLF_True
 static SDL_RendererInfo rendererDriverInfo;
 static NLF_bool rendererDriverInfoUnkown; //in case it was impossible to get information about renderer driver, set to NLF_True
-static SDL_mutex *screenMutex;
-static SDL_mutex *cameraMutex;
+static omp_lock_t screenMutex;
+static omp_lock_t cameraMutex;
 static NLF_Screen *screens;
 static NLF_bool jpgFlag; //if image format was loaded and can be used
 static NLF_bool pngFlag;
