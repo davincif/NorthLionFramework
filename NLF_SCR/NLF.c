@@ -117,4 +117,9 @@ NLF_bool NLF_set_api(NLF_API eipiai)
 
 	return e;
 }
+
+void NLF_game_start()
+{
+	//NLF_screen_run;
+}
 /******************/

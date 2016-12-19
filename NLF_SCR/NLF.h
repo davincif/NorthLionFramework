@@ -3,11 +3,11 @@
 
 /*Standard Includes*/
 #include <stdio.h>
+#include <omp.h>
 /*******************/
 
 /*EXTERNAL LIBRARIES*/
 #include "SDL.h"
-#include "SDL_thread.h"
 /*********************/
 
 /*NLF Internal Includes*/
@@ -37,7 +37,7 @@ void NLF_init();
 void NLF_quit();
 void NLF_pause();
 void NLF_continue();
-void NLF_game_start(void *user_parameter);
+void NLF_game_start();
 NLF_bool NLF_set_api(NLF_API eipiai);
 /******************/
 

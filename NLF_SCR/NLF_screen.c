@@ -243,11 +243,11 @@ void NLF_screen_init()
 
 void NLF_screen_quit()
 {
+	NLF_screen_destroy();
 	SDL_DestroyMutex(screenMutex);
 	screenMutex = NULL;
 	SDL_DestroyMutex(cameraMutex);
 	cameraMutex = NULL;
-	NLF_screen_destroy();
 	SDL_DestroyWindow(window);
 	window = NULL;
 	SDL_DestroyRenderer(window_rederer);
@@ -465,7 +465,7 @@ NLF_USInt NLF_screen_add(NLF_USInt sugestPosition, NLF_USInt x, NLF_USInt y, NLF
 
 		SDL_UnlockMutex(screenMutex);
 	} else {
-		printf("Couldn't lock mutex\n");
+		printf("Couldn't lock mutex: %s\n", SDL_GetError());
 	}
 
 	return ret;
@@ -527,7 +527,7 @@ void NLF_screen_remove(short int position)
 
 		SDL_UnlockMutex(screenMutex);
 	} else {
-		printf("Couldn't lock mutex\n");
+		printf("Couldn't lock mutex: %s\n", SDL_GetError());
 	}
 }
 
@@ -548,7 +548,7 @@ void NLF_screen_print()
 
 		SDL_UnlockMutex(screenMutex);
 	} else {
-		printf("Couldn't lock mutex\n");
+		printf("Couldn't lock mutex: %s\n", SDL_GetError());
 	}
 }
 
@@ -617,7 +617,7 @@ void NLF_camera_move(int plusx, int plusy)
 
 		SDL_UnlockMutex(cameraMutex);
 	} else {
-		printf("Couldn't lock mutex\n");
+		printf("Couldn't lock mutex: %s\n", SDL_GetError());
 	}
 }
 
@@ -636,7 +636,7 @@ void NLF_camera_resize(int x, int y, int w, int h)
 
 		SDL_UnlockMutex(cameraMutex);
 	} else {
-		printf("Couldn't lock mutex\n");
+		printf("Couldn't lock mutex: %s\n", SDL_GetError());
 	}
 }
 
@@ -655,7 +655,7 @@ void NLF_camera_setPosition(int newx, int newy)
 
 		SDL_UnlockMutex(cameraMutex);
 	} else {
-		printf("Couldn't lock mutex\n");
+		printf("Couldn't lock mutex: %s\n", SDL_GetError());
 	}
 }
 
@@ -708,7 +708,7 @@ void NLF_camera_realign(NLF_Alignment vAlignment, NLF_Alignment hAlignment)
 
 		SDL_UnlockMutex(cameraMutex);
 	} else {
-		printf("Couldn't lock mutex\n");
+		printf("Couldn't lock mutex: %s\n", SDL_GetError());
 	}
 }
 
@@ -728,7 +728,7 @@ void NLF_camera_reset()
 
 		SDL_UnlockMutex(cameraMutex);
 	} else {
-		printf("Couldn't lock mutex\n");
+		printf("Couldn't lock mutex: %s\n", SDL_GetError());
 	}
 }
 
@@ -751,7 +751,7 @@ static void NLF_screen_destroy()
 
 		SDL_UnlockMutex(screenMutex);
 	} else {
-		printf("Couldn't lock mutex\n");
+		printf("Couldn't lock mutex: %s\n", SDL_GetError());
 	}
 }
 /****************/

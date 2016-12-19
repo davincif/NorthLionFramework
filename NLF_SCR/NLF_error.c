@@ -9,13 +9,9 @@ void NLF_error_init()
 	NLF_signal_quit = NLF_False;
 	NLF_signal_pause = NLF_False;
 
-	filesMutex = SDL_CreateMutex();
-	flagsMutex = SDL_CreateMutex();
-	if(filesMutex == NULL || flagsMutex == NULL)
-	{
-		NLF_error_make_file_crash_report(NLF_ErrorSDLMutexCreationFail, "Could not initialize the Error Module", SDL_GetError()), NULL;
-		exit(NLF_ErrorSDLMutexCreationFail);
-	}
+	omp_init_lock(&filesMutex);
+	omp_init_lock(&flagsMutex);
+	//well, apparently this function do not fails!	
 
 	errormsg = (char**) malloc(sizeof(char*));
 	if(errormsg == NULL)
@@ -33,25 +29,23 @@ void NLF_error_init()
 
 void NLF_error_quit()
 {
-	time_t know, timer;
-	int status1 = 1, status2 = 1;
+	time_t now, timer;
+	int status1 = 0, status2 = 0;
 	int i;
 
 	//check if anyone is using the mutex and give it a time
 	time(&timer);
 	do{
-		if(status1 != 0)
-			status1 = SDL_TryLockMutex(filesMutex);
-		if(status2 != 0)
-			status2 = SDL_TryLockMutex(flagsMutex);
-		time(&know);
-	}while((status1 != 0 || status2 != 0) && (difftime(know,timer < 3.5)));
+		if(status1 == 0)
+			status1 = omp_test_lock(&filesMutex);
+		if(status2 == 0)
+			status2 = omp_test_lock(&flagsMutex);
+		time(&now);
+	}while((status1 == 0 || status2 == 0) && (difftime(now,timer < 3.5)));
 
 	//after 3.5 seconds destroy the mutex with or without the lock
-	SDL_DestroyMutex(filesMutex);
-		filesMutex = NULL;
-	SDL_DestroyMutex(flagsMutex);
-		flagsMutex = NULL;
+	omp_destroy_lock(&filesMutex);
+	omp_destroy_lock(&flagsMutex);
 
 	if(fileName != NULL)
 		free(fileName);
@@ -129,40 +123,38 @@ void NLF_error_make_file_crash_report(NLF_Error e, char *msg, ...)
 	FILE *f;
 	va_list lst;
 
-	if((filesMutex == NULL || flagsMutex == NULL) || (SDL_LockMutex(filesMutex) == 0 && SDL_LockMutex(flagsMutex) == 0))
+	/*CRITICAL REGION*/
+	omp_set_lock(&filesMutex);
+	omp_set_lock(&flagsMutex);
+	f = create_report_file(filePath, "CrashReportFile");
+
+	fprintf(f, "eh... sorry, i seems like a crash has occurred in your system.\n\n");
+
+	write_error(f, e, NLF_True);
+
+	fprintf(f, "Messages:\n");
+	aux = msg;
+	va_start(lst, msg);
+	while(aux != NULL)
 	{
-		//enter here if lock the mutex of if they were not created yeat
-		f = create_report_file(filePath, "CrashReportFile");
-
-		fprintf(f, "eh... sorry, i seems like a crash has occurred in your system.\n\n");
-
-		write_error(f, e, NLF_True);
-
-		fprintf(f, "Messages:\n");
-		aux = msg;
-		va_start(lst, msg);
-		while(aux != NULL)
-		{
-			fprintf(f, "\t- %s\n", aux);
-			aux = va_arg(lst, char*);
-		}
-		va_end(lst);
-
-		if(errorFlag != NLF_ErrorNone)
-		{
-			fprintf(f, "\n\nAlso there were an error not treated:\n");
-			write_error(f, errorFlag, NLF_False);
-			fprintf(f, "Messages:\n");
-			for(i = 0; errormsg[i] != NULL; i++)
-				fprintf(f, "\t- %s\n", errormsg[i]);
-		}
-
-		fclose(f);
-		SDL_UnlockMutex(filesMutex);
-		SDL_UnlockMutex(flagsMutex);
-	}else{
-		//still do know how to treat that
+		fprintf(f, "\t- %s\n", aux);
+		aux = va_arg(lst, char*);
 	}
+	va_end(lst);
+
+	if(errorFlag != NLF_ErrorNone)
+	{
+		fprintf(f, "\n\nAlso there were an error not treated:\n");
+		write_error(f, errorFlag, NLF_False);
+		fprintf(f, "Messages:\n");
+		for(i = 0; errormsg[i] != NULL; i++)
+			fprintf(f, "\t- %s\n", errormsg[i]);
+	}
+
+	fclose(f);
+	omp_unset_lock(&filesMutex);
+	omp_unset_lock(&flagsMutex);
+	/*****************/
 }
 
 NLF_Error NLF_error_set_path(const char *stdErrorPath)
@@ -177,63 +169,61 @@ NLF_Error NLF_error_set_path(const char *stdErrorPath)
 	NLF_bool hasBar;
 	NLF_Error ret;
 
-	if (SDL_LockMutex(filesMutex) == 0)
-	{
-		if(filePath != NULL)
-			free(filePath);
+	/*CRITICAL REGION*/
+	omp_set_lock(&filesMutex);
+	if(filePath != NULL)
+		free(filePath);
 
-		if(stdErrorPath == NULL)
+	if(stdErrorPath == NULL)
+	{
+		filePath = (char*) malloc(sizeof(char) * (strlen("ChrashReport") + 2));
+		if(filePath == NULL)
 		{
-			filePath = (char*) malloc(sizeof(char) * (strlen("ChrashReport") + 2));
-			if(filePath == NULL)
-			{
-				SDL_UnlockMutex(filesMutex);
-				NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate memory, to set the FilePath!", NULL);
-				return NLF_ErrorInsufficientMemory;
-			}
+			omp_unset_lock(&filesMutex);
+			NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate memory, to set the FilePath!", NULL);
+			return NLF_ErrorInsufficientMemory;
+		}
+		#ifdef NLF_OS_WINDOWS
+			strcpy(filePath, "ChrashReport\\");
+		#else
+			strcpy(filePath, "ChrashReport/");
+		#endif
+	}else{
+		aux = strlen(stdErrorPath) - 1; //take the last letter
+		if(stdErrorPath[aux] != '/' && stdErrorPath[aux] != '\\')
+			hasBar = NLF_False;
+		else
+			hasBar = NLF_True;
+
+		filePath = (char*) malloc(sizeof(char) * (aux + 2 + (hasBar == NLF_True ? 0 : 1)));
+		if(filePath == NULL)
+		{
+			omp_unset_lock(&filesMutex);
+			NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate memory, to set the FilePath!", NULL);
+			return NLF_ErrorInsufficientMemory;
+		}
+		strcpy(filePath, stdErrorPath);
+
+		if(hasBar == NLF_True)
+		{
 			#ifdef NLF_OS_WINDOWS
-				strcpy(filePath, "ChrashReport\\");
+				filePath[aux] = '\\';
 			#else
-				strcpy(filePath, "ChrashReport/");
+				filePath[aux] = '/';
 			#endif
 		}else{
-			aux = strlen(stdErrorPath) - 1; //take the last letter
-			if(stdErrorPath[aux] != '/' && stdErrorPath[aux] != '\\')
-				hasBar = NLF_False;
-			else
-				hasBar = NLF_True;
-
-			filePath = (char*) malloc(sizeof(char) * (aux + 2 + (hasBar == NLF_True ? 0 : 1)));
-			if(filePath == NULL)
-			{
-				SDL_UnlockMutex(filesMutex);
-				NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate memory, to set the FilePath!", NULL);
-				return NLF_ErrorInsufficientMemory;
-			}
-			strcpy(filePath, stdErrorPath);
-
-			if(hasBar == NLF_True)
-			{
-				#ifdef NLF_OS_WINDOWS
-					filePath[aux] = '\\';
-				#else
-					filePath[aux] = '/';
-				#endif
-			}else{
-				#ifdef NLF_OS_WINDOWS
-					filePath[aux + 1] = '\\';
-				#else
-					filePath[aux + 1] = '/';
-				#endif
-				filePath[aux + 2] = '\0';
-			}
+			#ifdef NLF_OS_WINDOWS
+				filePath[aux + 1] = '\\';
+			#else
+				filePath[aux + 1] = '/';
+			#endif
+			filePath[aux + 2] = '\0';
 		}
-
-		ret = NLF_ErrorNone;
-		SDL_UnlockMutex(filesMutex);
-	}else{
-		ret = NLF_ErrorSDLMutexLockFail;
 	}
+
+	ret = NLF_ErrorNone;
+	omp_unset_lock(&filesMutex);
+	/*****************/
 
 	return ret;
 }
@@ -255,57 +245,54 @@ NLF_bool NLF_error_set_flag(NLF_Error e, int args, char *msg, ...)
 	int i;
 	va_list lst;
 
-	if(SDL_LockMutex(flagsMutex) == 0)
+	/*CRITICAL REGION*/
+	omp_set_lock(&flagsMutex);
+	if(errorFlag == NLF_ErrorNone)
 	{
-		if(errorFlag == NLF_ErrorNone)
+		if(errormsg != NULL)
 		{
-			if(errormsg != NULL)
-			{
-				for(i = 0; errormsg[i] != NULL; i++)
-					free(errormsg[i]);
-				free(errormsg);
-			}
-			errormsg = NULL;
+			for(i = 0; errormsg[i] != NULL; i++)
+				free(errormsg[i]);
+			free(errormsg);
+		}
+		errormsg = NULL;
 
-			errormsg = (char**) malloc(sizeof(char*)*(args+1));
-			if(errormsg == NULL)
-			{
-				SDL_UnlockMutex(flagsMutex);
-				NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, msg, "mallocing error while setting error flag", NULL);
-				ok = NLF_False;
-			}else{
-				ok = NLF_True;
-			}
-
-			if(ok == NLF_True)
-			{
-				errorFlag = e;
-				aux = msg;
-				va_start(lst, msg);
-				for(i = 0; i < args; i++)
-				{
-					errormsg[i] = (char*) malloc(sizeof(char) * (strlen(aux) + 1));
-					if(errormsg[i] == NULL)
-					{
-						SDL_UnlockMutex(flagsMutex);
-						NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, aux, "mallocing error while setting error flag", NULL);
-					}else{
-						strcpy(errormsg[i], aux);
-					}
-					aux = va_arg(lst, char*);
-				}
-				errormsg[i] = NULL; //setting the sentinel and the end of the string array
-				for(; aux != NULL; aux = va_arg(lst, char*));//clean any possible extra argument
-				va_end(lst);
-			}
-		}else{
+		errormsg = (char**) malloc(sizeof(char*)*(args+1));
+		if(errormsg == NULL)
+		{
+			omp_unset_lock(&flagsMutex);
+			NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, msg, "mallocing error while setting error flag", NULL);
 			ok = NLF_False;
+		}else{
+			ok = NLF_True;
 		}
 
-		SDL_UnlockMutex(flagsMutex);
+		if(ok == NLF_True)
+		{
+			errorFlag = e;
+			aux = msg;
+			va_start(lst, msg);
+			for(i = 0; i < args; i++)
+			{
+				errormsg[i] = (char*) malloc(sizeof(char) * (strlen(aux) + 1));
+				if(errormsg[i] == NULL)
+				{
+					omp_unset_lock(&flagsMutex);
+					NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, aux, "mallocing error while setting error flag", NULL);
+				}else{
+					strcpy(errormsg[i], aux);
+				}
+				aux = va_arg(lst, char*);
+			}
+			errormsg[i] = NULL; //setting the sentinel and the end of the string array
+			for(; aux != NULL; aux = va_arg(lst, char*));//clean any possible extra argument
+			va_end(lst);
+		}
 	}else{
 		ok = NLF_False;
 	}
+	omp_unset_lock(&flagsMutex);
+	/*****************/
 
 	if(ok == NLF_False)
 	{
@@ -327,21 +314,18 @@ void NLF_error_clean_flag()
 */
 	int i;
 
-	if(SDL_LockMutex(flagsMutex) == 0)
+	/*CRITICAL REGION*/
+	omp_set_lock(&flagsMutex);
+	errorFlag = NLF_ErrorNone;
+	if(errormsg != NULL)
 	{
-		errorFlag = NLF_ErrorNone;
-		if(errormsg != NULL)
-		{
-			for(i = 0; errormsg[i] != NULL; i++)
-				free(errormsg[i]);
-			free(errormsg);
-		}
-		errormsg = NULL;
-
-		SDL_UnlockMutex(flagsMutex);
-	}else{
-		printf("!!!! the SDL_LockMutex(flagsMutex) has just failed... in NLF_error_clean_flag funtion !!!!\n");
+		for(i = 0; errormsg[i] != NULL; i++)
+			free(errormsg[i]);
+		free(errormsg);
 	}
+	errormsg = NULL;
+	omp_unset_lock(&flagsMutex);
+	/*****************/
 }
 
 NLF_Error NLF_error_get_flag()
@@ -351,13 +335,11 @@ NLF_Error NLF_error_get_flag()
 */
 	NLF_Error e;
 
-	if(SDL_LockMutex(flagsMutex) == 0)
-	{
-		e = errorFlag;
-		SDL_UnlockMutex(flagsMutex);
-	}else{
-		e = NLF_ErrorSDLMutexLockFail;
-	}
+	/*CRITICAL REGION*/
+	omp_set_lock(&flagsMutex);
+	e = errorFlag;
+	omp_unset_lock(&flagsMutex);
+	/*****************/
 
 	return e;
 }

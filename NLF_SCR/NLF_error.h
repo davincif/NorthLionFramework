@@ -6,10 +6,10 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#include <omp.h>
 /************/
 
 /*EXTERNAL LIBRARIES*/
-#include "SDL_mutex.h"
 /*********************/
 
 /*INTERNAL LIBRARIES*/
@@ -26,8 +26,8 @@ NLF_bool NLF_signal_pause; //signal t pause the system
 int NLF_error_sdl_delay; //de delay the inherent to the SDL_Delay() funtion.
 
 //for internal funcionality only
-static SDL_mutex *filesMutex; //lock to use fileName or filePath
-static SDL_mutex *flagsMutex; //lock to use the flags of error
+static omp_lock_t filesMutex; //lock to use fileName or filePath
+static omp_lock_t flagsMutex; //lock to use the flags of error
 static char *fileName;
 static char *filePath;
 static NLF_Error errorFlag;
