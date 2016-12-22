@@ -100,7 +100,7 @@ makerfile_l2l()
 			exit 1
 		;;
 	esac
-	local CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized -lm"
+	local CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized -lm -fopenmp"
 	#path to the folder's root, where the holy not build framework is. Relate to this Makefile
 	local PREPATH=".."
 	#Path to the SDL, SDL_image and Lua includes and libs
@@ -136,7 +136,7 @@ makerfile_l2w()
 		local CC=i686-w64-mingw32-gcc
 	fi
 
-	local CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized"
+	local CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized -fopenmp"
 	local PREPATH=".."
 	#Path to the SDL, SDL_image and Lua includes and libs
 	local SDL2INCLUDES="-I $PREPATH/SDL2/include"

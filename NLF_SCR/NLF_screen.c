@@ -144,6 +144,7 @@ void NLF_screen_init()
 	//there's just no need to the FPS be greater then the display refresh rate
 	(videoMode.refresh_rate >= 60 || videoMode.refresh_rate == 0) ? (idealFPS = 60): (idealFPS = videoMode.refresh_rate);
 	/*************************/
+	eFPS = idealFPS*0.08;
 
 	///CREATING WINDOW SET
 	window = SDL_CreateWindow("NorthLionFramework Game", 0, 0, camera.w, camera.h, SDL_WINDOW_BORDERLESS | SDL_WINDOW_MAXIMIZED);
@@ -250,9 +251,8 @@ int NLF_screen_run()
 */
 	int tickaux;
 	int tickCounter = 0;
-	int aux;
+	int prevStime, stime;
 	NLF_USInt FPScounter = 0;
-
 
 	//ISSUE: missing to treat what happens when SDL_GetTicks() overflows
 	while(NLF_signal_quit == NLF_False)
@@ -260,7 +260,8 @@ int NLF_screen_run()
 		//MISSING IMPLEMENTING THE PAUSE SIGNAL
 
 		//estimate FPS
-		estimatedFPS = 1000 / screen_deltaTicks;
+		prevStime = stime;
+		estimatedFPS = 1000 / screen_deltaTicks; //GetTicks has millisecond precision
 
 		//take the current time
 		tickaux = SDL_GetTicks();
@@ -270,12 +271,12 @@ int NLF_screen_run()
 		NLF_screen_print();
 
 		//estimate the sleep time to reach the ideal FPS
-		if(estimatedFPS >= idealFPS)
-		{
-			aux = ((estimatedFPS - idealFPS) * screen_deltaTicks) / idealFPS;
-			if(aux > NLF_error_sdl_delay)
-				SDL_Delay(aux - NLF_error_sdl_delay);
-		}
+		if(estimatedFPS >= idealFPS - eFPS && estimatedFPS <= idealFPS + eFPS)
+			stime = prevStime;
+		else
+			stime = (((estimatedFPS - idealFPS) * screen_deltaTicks) / idealFPS) - screen_deltaTicks - NLF_error_sdl_delay;
+		if(stime > 0)
+			SDL_Delay(stime);
 		//measuring current fps
 		tickCounter += screen_deltaTicks;
 		FPScounter++;
@@ -548,6 +549,23 @@ void NLF_screen_set_fps(NLF_USInt newfps)
 		idealFPS = 24;
 	else
 		idealFPS = newfps;
+}
+
+void NLF_screen_set_efps(NLF_USInt newefps)
+{
+/*
+	arguments:
+		newefps - the new tolarance, the system will try to achieve an fps = idealFPS +- eFPS
+	this function will:
+		NOTE: the eFPS cant be higher then 15% of the FPS nor lesser then 5% of it.
+		if newefps is out of this range eFPS will receive the maximum or minimum value.
+*/
+	if(newefps > NLF_PMAX_EFPS*idealFPS)
+		eFPS = NLF_PMAX_EFPS*idealFPS;
+	else if(newefps < NLF_PMIN_EFPS*idealFPS)
+		eFPS = NLF_PMIN_EFPS*idealFPS;
+	else
+		eFPS = newefps;
 }
 
 NLF_USInt NLF_screen_get_current_fps()

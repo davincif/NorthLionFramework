@@ -241,7 +241,7 @@ make_c_proj()
 					exit 15
 				;;
 			esac
-			
+
 			#preparing direcotries
 			cd $PROJECTPATH/$USERPROJECT
 			rm -f -v -r $COMPILEPATH
@@ -261,6 +261,7 @@ make_c_proj()
 				$CC $CFLAGS $NLFINCLUDES $SDL2INCLUDES $SDL2IMAGE2INCLUDES -fPIC -c $file -o ${file:0:$((${#file}-1))}o
 				set +x
 			done
+
 			set -x
 			$CC -Wl,-rpath=./ $CFLAGS $NLFINCLUDES $SDL2INCLUDES $SDL2IMAGE2INCLUDES ./*.o -o "$EXEC$EXECEXTENTION" $NLFLIBS
 			set +x

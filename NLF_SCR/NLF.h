@@ -25,11 +25,6 @@ typedef enum NLF_API
 
 /*GLOBAL VARIABLES*/
 static NLF_API api;
-//THREADS
-SDL_Thread *NLF_thread_screen;
-SDL_Thread *NLF_thread_physics;
-SDL_Thread *NLF_thread_event_watcher;
-SDL_Thread *NLF_thread_sound_player;
 /******************/
 
 /*GLOBAL FUNCTIONS*/

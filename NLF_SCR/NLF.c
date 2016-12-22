@@ -25,21 +25,6 @@ void NLF_init()
 	NLF_animation_init();
 	printf("done\n");
 
-	printf("\tCreating Threads...");
-	NLF_thread_screen = SDL_CreateThread(NLF_screen_run, "Screen", (void*) NULL);
-	if(NLF_thread_screen == NULL)
-	{
-		str = SDL_GetError();
-		printf("Could not create screen thread NLF_thread_screen");
-		printf("SDL Error: %s", str);
-		NLF_error_make_file_crash_report(NLF_ErrorSDLThreadCreationFail, "Could not create screen thread NLF_thread_screen", "SDL Error: ", str, NULL);
-		exit(NLF_ErrorSDLThreadCreationFail);
-	}
-	NLF_thread_physics = NULL;
-	NLF_thread_event_watcher = NULL;
-	NLF_thread_sound_player = NULL;
-	printf("done\n");
-
 	printf("NLF Initialized!\n\n");
 }
 
@@ -51,15 +36,6 @@ void NLF_quit()
 		give the signal to quit the game.
 */
 	NLF_signal_quit = NLF_True;
-	//Need to find a better to do this. eg.: if the thread do not end, kill it.
-	SDL_WaitThread(NLF_thread_screen, NULL);
-	SDL_WaitThread(NLF_thread_physics, NULL);
-	SDL_WaitThread(NLF_thread_event_watcher, NULL);
-	SDL_WaitThread(NLF_thread_sound_player, NULL);
-	NLF_thread_screen = NULL;
-	NLF_thread_physics = NULL;
-	NLF_thread_event_watcher = NULL;
-	NLF_thread_sound_player = NULL;
 
 	printf("Quiting NLF...\n");
 
@@ -120,6 +96,17 @@ NLF_bool NLF_set_api(NLF_API eipiai)
 
 void NLF_game_start()
 {
-	//NLF_screen_run;
+	printf("\t\tMax threads to parallel region %d\n", omp_get_max_threads());
+	printf("\t\tMaximum threads available %d\n", omp_get_thread_limit());
+	printf("\t\tNumber of processors %d\n", omp_get_num_procs());
+
+	#pragma omp parallel num_threads(4)
+	{
+		#pragma omp single
+			NLF_screen_run();
+		//physics
+		//watcher
+		//sound
+	}
 }
 /******************/
