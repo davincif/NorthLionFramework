@@ -2,10 +2,8 @@
 
 ###VARIABLES###
 DS="$" #Dolar Sign
-L2LCOMP=false
-L2WCOMP=false
-COMP32BITS=false
-COMP64BITS=false
+COMP_OS_FLAG=""
+COMP_ARCH_FALG=""
 MACHINE_TYPE=`uname -m`
 SYSTEM_TYPE=`uname -o`
 ###############
@@ -19,91 +17,160 @@ Also, this script considers that you're on a GNU/linux 64bits machine.
 
 -h or --help
 	show this help (thats not a compiling flag ^^')
+**********************************************************
 -l2l or --linux2linux
-	configure a Makefile to be built in linux OS
+	configure a Linux Makefile for building NLF for Linux
 -l2w or --linux2windows
-	configure a Makefile for linux to be built in Windows OS
+	configure a Linux Makefile for building NLF for Windows
+-l2osx or --linux2osx
+	configure a Linux Makefile for building NLF for OSX
+-l2a or --linux2android
+	configure a Linux Makefile for building NLF for Android
+-l2ios or --linux2ios
+	configure a Linux Makefile for building NLF for IOS
+**********************************************************
+-osx2l or --osx2linux
+	configure a OSX Makefile for building NLF for Linux
+-osx2w or --osx2windows
+	configure a OSX Makefile for building NLF for Windows
+-osx2osx
+	configure a OSX Makefile for building NLF for OSX
+-osx2a or --osx2android
+	configure a OSX Makefile for building NLF for Android
+-osx2ios
+	configure a OSX Makefile for building NLF for IOS
+**********************************************************
+-w2l or --windows2linux
+	configure a Windows Makefile for building NLF for Linux
+-w2w or --windows2windows
+	configure a Windows Makefile for building NLF for Windows
+-w2osx or --windows2osx
+	configure a Windows Makefile for building NLF for OSX
+-w2a or --windows2android
+	configure a Windows Makefile for building NLF for Android
+-w2ios or --windows2ios
+	configure a Windows Makefile for building NLF for IOS
+**********************************************************
 -32 or --32bits
 	compile for 32 bit systems
 -64 or --64bits
 	compile for 64 bit systems
+--mybits
+	compile to $MACHINE_TYPE architecture
+**********************************************************
 -c or --clean
 	clean whatever the configure file had created"
 
-	if [ ${MACHINE_TYPE} != 'x86_64' ]; then
-		echo "#WARNING: you're not in a 64-bit MACHINE"
-	fi
-
 	if [ ${SYSTEM_TYPE} != 'GNU/Linux' ]; then
 		echo "#WARNING: you're not in a GNU/Linux MACHINE"
+		echo "it means that this compilation was not made to that system. But if you have gcc and bash, it may work anyway =)"
 	fi
 }
 
 makerfile_l2l()
 {
-	echo "Makefile for linux to linux $1 bits..."
-	printf "#the compiler
-CC = gcc
+	case $MACHINE_TYPE in
+		x86_64 | amd64 )
+			if [ $1 = "-64" ]; then
+				local CC=gcc
+			elif [ $1 = "-32" ]; then
+				echo "Compiling from linux 64 for linux 32 note implemented yet"
+				exit 2
+			else
+				echo "Something went really wrong... arguments recived by makerfile_l2l: $@"
+				exit 16
+			fi
+		;;
 
-#the standart ompilation flags of the project
-CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized
+		x86 | i*86 )
+			if [ $1 = "-64" ]; then
+				echo "Compiling from linux 32 for linux 64 note implemented yet"
+				exit 2
+			elif [ $1 = "-32" ]; then
+				local CC=gcc
+			else
+				echo "Something went really wrong... arguments recived by makerfile_l2l: $@"
+				exit 16 
+			fi
+		;;
 
-#path to the folder's root, where the holy not build framework is. Relate to this Makefile
-PREPATH = ..\n" > Makefile
+		* )
+			echo "something went really wrong. Architecture not recognized"
+			echo "try not to use the the --mybits next time"
+			exit 1
+		;;
+	esac
+	local CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized -lm -fopenmp"
+	#path to the folder's root, where the holy not build framework is. Relate to this Makefile
+	local PREPATH=".."
+	#Path to the SDL, SDL_image and Lua includes and libs
+	local SDL2INCLUDES="-I $PREPATH/SDL2/include"
+	local SDL2LIBS="-L $PREPATH/SDL2/lib/ -lSDL2main -lSDL2 -lSDL2_test"
+	local SDLIMAGE2INCLUDES="-I $PREPATH/SDL2/SDL_image"
+	local SDLIMAGE2LIBS="-L $PREPATH/SDL2/lib/ -lSDL2_image"
+	#LUAINCLUDES = -I $PREPATH/lua/
+	#LUALIB = $PREPATH/lua/ -llua -lm" >> Makefile
+	#Where to put the compiled program
+	local COMPILEPATH="$PREPATH/BINARIES"
 
-	printf "
-#Path to the SDL, SDL_image and Lua includes and libs
-SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
-SDL2LIBS = -L$DS(PREPATH)/SDL2/lib/ -lSDL2 -lSDL2main -lSDL2_test
-SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
-SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/lib/ -lSDL2_image" >> Makefile
+	echo "Makefile for linux to linux ${1:1} bits..."
+	for file in ./*.c
+	do
+		set -x
+		$CC $CFLAGS $SDL2INCLUDES $SDLIMAGE2INCLUDES -fPIC -c $file $SDL2LIBS $SDLIMAGE2LIBS
+		set +x
+	done
+	mv -v ./*.o $PREPATH/BINARIES/
+	set -x
+	$CC $CFLAGS $SDL2INCLUDES $SDLIMAGE2INCLUDES -shared $COMPILEPATH/*.o -o $COMPILEPATH/libNLF.so $SDL2LIBS $SDLIMAGE2LIBS
+	set +x
 
-	printf "
-#LUAINCLUDES = -I $DS(PREPATH)/lua/
-#LUALIB = $DS(PREPATH)/lua/ -llua -lm" >> Makefile
-
-	printf "\n
-#Where to put the compiled program
-COMPILEPATH = $DS(PREPATH)/BINARIES/\n" >> Makefile
-
-	cat make_config >> Makefile
-	echo "*done*"
+	echo "NLF compiled"
 }
 
 makerfile_l2w()
 {
-	echo "Makefile for linux to windows $1 bits..."
-	printf "#the compiler\n" > Makefile
-	if [ $1 = "64" ]; then
-		printf "CC = x86_64-w64-mingw32-gcc\n\n" > Makefile
-	elif [ $1 = "32" ]; then
-		printf "CC = i686-w64-mingw32-gcc\n\n" > Makefile
+	if [ $1 = "-64" ]; then
+		local CC=x86_64-w64-mingw32-gcc
+	elif [ $1 = "-32" ]; then
+		local CC=i686-w64-mingw32-gcc
 	fi
 
-	printf "#the standart ompilation flags of the project
-CFLAGS = -O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized
+	local CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized -fopenmp"
+	local PREPATH=".."
+	#Path to the SDL, SDL_image and Lua includes and libs
+	local SDL2INCLUDES="-I $PREPATH/SDL2/include"
+	local SDL2LIBS="-L $PREPATH/SDL2/4windows/SDL2/${1:1} -lmingw32 -lSDL2main -lSDL2"
+	local SDLIMAGE2INCLUDES="-I $PREPATH/SDL2/SDL_image"
+	local SDLIMAGE2LIBS="-L $PREPATH/SDL2/4windows/SDL2_image/${1:1} -lSDL2_image"
+	#LUAINCLUDES = -I $PREPATH/lua/
+	#LUALIB = -L $PREPATH/lua/ -llua -lm
+	#Where to put the compiled program
+	local COMPILEPATH="$PREPATH/BINARIES"
 
-#path to the folder's root, where the holy not build framework is. Relate to this Makefile
-PREPATH = ..
 
-#Path to the SDL, SDL_image and Lua includes and libs
-SDL2INCLUDES = -I $DS(PREPATH)/SDL2/include
-SDL2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2/$1 -lmingw32 -lSDL2main -lSDL2
-SDLIMAGE2INCLUDES = -I $DS(PREPATH)/SDL2/SDL_image
-SDLIMAGE2LIBS = -L$DS(PREPATH)/SDL2/4windows/SDL2_image/$1 -lSDL2_image
-#LUAINCLUDES = -I $DS(PREPATH)/lua/
-#LUALIB = -L $DS(PREPATH)/lua/ -llua -lm
+	echo "Makefile for linux to windows ${1:1} bits..."
+	for file in ./*.c
+	do
+		set -x
+		$CC $CFLAGS $SDL2INCLUDES $SDLIMAGE2INCLUDES -fPIC -c $file $SDL2LIBS $SDLIMAGE2LIBS
+		set +x
+	done
+	mv -v ./*.o $PREPATH/BINARIES/
+	set -x
+	$CC $CFLAGS $SDL2INCLUDES $SDLIMAGE2INCLUDES -shared $COMPILEPATH/*.o -o $COMPILEPATH/libNLF.dll $SDL2LIBS $SDLIMAGE2LIBS
+	set +x
 
-#Where to put the compiled program
-COMPILEPATH = $DS(PREPATH)/BINARIES/" >> Makefile
-
-	cat make_config_win >> Makefile
-	echo "*done*"
+	echo "NLF compiled"
 }
 
 clean_sutff()
 {
-	rm "Makefile"
+	#Find a better way to do this than '../BINARIES'!!
+	rm -f -v "Makefile" ./*.o ./*h.gch ../BINARIES/*.o
+	if [ "$1" == "--all" ]; then
+		rm -f -v ../BINARIES/*.dll ../BINARIES/*.so
+	fi
 }
 ###############
 
@@ -111,93 +178,117 @@ clean_sutff()
 ### CHECKING ARGUMENTS CONSISTENCY
 if [ -z "$1" ]; then
 	config_help
-	exit
+	exit 3
 fi
 
 for arg in $@; do
 	case $arg in
 		-l2l | --linux2linux )
-			if [ "$L2WCOMP" = false ]; then
-				L2LCOMP=true
+			if [ -z "$COMP_OS_FLAG" ]; then
+				COMP_OS_FLAG="-l2l"
 			else
 				echo "error: Flag '$arg' given, but linux to windows compilation alredy required .-."
 				echo "Wait, what? \"This is madness!\""
-				exit
+				exit 4
 			fi
 		;;
 
 		-l2w | --linux2windows )
-			if [ "$L2LCOMP" = false ]; then
-				L2WCOMP=true
+			if [ -z "$COMP_OS_FLAG" ]; then
+				COMP_OS_FLAG="-l2w"
 			else
 				echo "error: Flag '$arg' given, but linux to linux compilation alredy required .-."
 				echo "Wait, what? \"This is madness!\""
-				exit
+				exit 5
 			fi
 		;;
 
+		-l2osx | --linux2osx | -l2a | --linux2android | -l2ios | --linux2ios )
+			echo "Sorry, specific OSX, android and ios building tools not developed yet"
+			exit 13
+		;;
+
+		-osx2l | --osx2linux | -osx2w | --osx2windows | -osx2osx | -osx2a | --osx2android | -osx2ios )
+			echo "Sorry, specific OSX building tools not developed yet."
+			echo "you may try to compile using the linux tools. It may work =)"
+			exit 14
+		;;
+
+		-w2l | --windows2linux | -w2w | --windows2windows | -w2osx | --windows2osx | -w2a | --windows2android | -w2ios | --windows2ios )
+			echo "Sorry, windows building tools not developed yet"
+			exit 15
+		;;
+
+
 		-32 | --32bits )
-			if [ "$COMP64BITS" = false ]; then
-				COMP32BITS=true
+			if [ -z "$COMP_ARCH_FALG" ]; then
+				COMP_ARCH_FALG="-32"
 			else
 				echo "error: Flag '$arg' given, but 64bits compilation alredy required .-."
 				echo "You have to chosse, but chosse wisely..."
-				exit
+				exit 6
 			fi
 		;;
 
 		-64 | --64bits )
-			if [ "$COMP32BITS" = false ]; then
-				COMP64BITS=true
+			if [ -z "$COMP_ARCH_FALG" ]; then
+				COMP_ARCH_FALG="-64"
 			else
 				echo "error: Flag '$arg' given, but 64bits compilation alredy required .-."
 				echo "You have to chosse, but chosse wisely..."
-				exit
+				exit 7
 			fi
 		;;
 
 		-c | --clean )
 			clean_sutff
-			exit
+			exit 8
 		;;
 
 		-h | --help )
 			config_help
-			exit
+			exit 9
 		;;
 
 		*)
 			echo "Not recognized option"
 			config_help
-			exit
+			exit 10
 		;;
 	esac
 done
 
-if [[ ("$L2WCOMP" = false) && ("$L2LCOMP" = false) ]]; then
+if [ "$COMP_OS_FLAG" == "" ]; then
 	echo "error: missing linux2linux or linux2windows compilation flag"
 	echo "pick one, bro!"
-	exit
+	exit 11
 fi
 
-if [[ ("$COMP64BITS" = false) && ("$COMP32BITS" = false) ]]; then
+if [ "$COMP_ARCH_FALG" == "" ]; then
 	echo "error: missing flag 32 bits or 64 bits flag compilation recived"
 	echo "the red or the blue pill, pick one..."
-	exit
+	exit 12
 fi
 
 ## CONSTRUCTING THE CORRECT MAKEFILE
-if [ "$L2LCOMP" = true ]; then
-	if [ "$COMP64BITS" = true ]; then
-		makerfile_l2l "64"
-	else
-		#I've head that it's only needed to add -m32 to the Cflags =)
-		echo "sorry, still in progess"
-	fi
-elif [ "$L2WCOMP" = true ]; then
-	if [ "$COMP64BITS" = true ]; then
-		makerfile_l2w "64"
-	else
-		makerfile_l2w "32"
-	fi
-fi
+case $COMP_OS_FLAG in
+	-l2l | --linux2linux )
+		makerfile_l2l $COMP_ARCH_FALG
+	;;
+
+	-l2w | --linux2windows )
+		makerfile_l2w $COMP_ARCH_FALG
+	;;
+
+	-l2osx | --linux2osx | -l2a | --linux2android | -l2ios | --linux2ios )
+		#code
+	;;
+
+	-osx2l | --osx2linux | -osx2w | --osx2windows | -osx2osx | -osx2a | --osx2android | -osx2ios )
+		#code
+	;;
+
+	-w2l | --windows2linux | -w2w | --windows2windows | -w2osx | --windows2osx | -w2a | --windows2android | -w2ios | --windows2ios )
+		#code
+	;;
+esac

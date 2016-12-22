@@ -1,0 +1,459 @@
+#!/bin/bash
+
+###VARIABLES###
+PROJECTPATH="NLF_projects"
+USERPROJECT=""
+PROJECTS=""
+MACHINE_TYPE=`uname -m`
+SYSTEM_TYPE=`uname -s`
+MYABSPATH=""
+###############
+
+###FUNCTIONS###
+get_abs_filename()
+{
+#$1 : relative filename
+#use it like this: myabsfile=$(get_abs_filename "../../foo/bar/file.txt")
+	echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
+}
+
+check_portability()
+{
+#check whether whiptail or dialog is installed
+	#(choosing the first command found)
+	read BOX <<< "$(which whiptail dialog 2> /dev/null)"
+
+	# exit if none found
+	if ! [ "$BOX" ]; then
+		echo 'neither whiptail nor dialog found' >&2
+		exit 1
+	else
+		echo "using $BOX..."
+	fi
+
+	# just use whichever was found
+	echo "UI displayed with $BOX"
+}
+
+init()
+{
+	local AUX
+
+	#defining absolute path
+	AUX=${0##*/}
+	MYABSPATH=$(get_abs_filename "$AUX")
+	MYABSPATH=${MYABSPATH:0:$((${#MYABSPATH}-${#AUX}-1))}
+
+	#Path to includes and libs
+	NLFINCLUDES="-I $MYABSPATH/NLF_SCR"
+	SDL2INCLUDES="-I $MYABSPATH/SDL2/include"
+	NLFLIBS=""
+	SDL2IMAGE2INCLUDES="-I $MYABSPATH/SDL2/SDL_image"
+	CFLAGS="-O3 -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-implicit-function-declaration -Wmaybe-uninitialized -fopenmp"
+
+	#checking UI portability
+	check_portability
+}
+
+create_path()
+{
+	if ! [ -d "$1" ]; then
+		mkdir "$1"
+		echo "Path '$1' created."
+		return 1
+	else
+		echo "Path '$1' already exist."
+		if [ "$2" == "--exclusive" ]; then
+			exit 2
+		fi
+	fi
+
+	return 0
+}
+
+make_main()
+{
+	if [ $1 = "C" ]; then
+		printf "#include <NLF.h>
+/*#include \"your_library_here.h\"*/
+
+int main(int argc, char *argv[])
+{
+	NLF_init();
+	NLF_set_api(NLF_APIC);
+
+	/*your code here*/
+
+	NLF_game_start();
+
+	NLF_quit();
+	return 0;
+}
+" > $PROJECTPATH/$USERPROJECT/main.c
+		echo "main file generated"
+	elif [ $1 = "lua" ]; then
+		printf "\n--Under development, sorry =/" > $PROJECTPATH/$USERPROJECT/main.lua
+		echo "main file generated"
+	else
+		echo "something went wrong..."
+		echo "make_main function got bad argument: '$@'"
+		exit 5
+	fi
+}
+
+build_nlf()
+{
+#$1 - for what system do you wanna build the user project
+#$2 - for what architecture do you wanna build the user project
+	local RET
+	local DIRECTORY
+
+	echo "building North Lion Framework for $1"
+	cd $MYABSPATH/BINARIES
+	case $1 in
+		*2l )
+			DIRECTORY="linux${2:1}"
+		;;
+
+		*2w )
+			DIRECTORY="windows${2:1}"
+		;;
+
+		*2osx )
+			DIRECTORY="osx${2:1}"
+		;;
+
+		*2a )
+			DIRECTORY="android${2:1}"
+		;;
+
+		*2ios )
+			DIRECTORY="ios${2:1}"
+		;;
+	esac
+	create_path $DIRECTORY
+	RET=$?
+	if [ $RET == 0 ]; then
+		if ("$BOX" --title "NLF already built" --yesno "NLF lib is already built for the system you're trying to export. Do you with to rebuilt it?" 10 60) then
+			rm -v -f -r $DIRECTORY
+			create_path $DIRECTORY
+		else
+			cd $MYABSPATH
+			return 0
+		fi
+	fi
+
+	cd $MYABSPATH/NLF_SCR
+	case $SYSTEM_TYPE in
+		Linux )
+			./configure $1 $2
+			if [[ "$DIRECTORY" == *"linux"* ]]; then
+				mv -v ../BINARIES/*.so ../BINARIES/$DIRECTORY
+			elif [[ "$DIRECTORY" == *"windows"* ]]; then
+				mv -v ../BINARIES/*.dll ../BINARIES/$DIRECTORY
+			fi
+			./configure -c
+		;;
+
+		Darwin )
+			rm -r "../BINARIES/${1:1}${2:1:2}"
+			echo "Specific OSX building tool still not developed"
+			exit 17
+		;;
+
+		UWIN-W7 | CYGWIN_NT-6.1* )
+			rm -r "../BINARIES/${1:1}${2:1:2}"
+			echo "Windows building tool still not developed"
+			exit 18
+		;;
+	esac
+	cd $MYABSPATH
+}
+
+make_c_proj()
+{
+	local EXECEXTENTION=""
+
+	#creating libs' directory
+	#tried to compile with the libs all in one place, but I couldn't
+	#rm -f -v -r $PROJECTPATH/$USERPROJECT/libs
+	#create_path $PROJECTPATH/$USERPROJECT/libs/
+
+	#get parameters and preparing compiler and libs
+	case $1 in
+		-l2l | -l2w | -l2osx | -l2a | -l2ios )
+			case $1 in
+				-l2l )
+					case $2 in
+						-64to32 )
+							#cp not developed
+							CC="gcc -m32"
+							COMPILEPATH="linux32"
+						;;
+
+						-32to64 )
+							#cp not developed
+							echo "build to a 64 linux system from a 32 linux system is not yet supported"
+							exit 14
+						;;
+
+						-64to64 )
+							NLFLIBS="-L $MYABSPATH/SDL2/lib -lSDL2main -lSDL2 -lSDL2_image -L ./ -lNLF"
+							cp SDL2/lib/*.so* $PROJECTPATH/$USERPROJECT/
+							CC="gcc"
+							COMPILEPATH="linux64"
+						;;
+
+						-32to32 )
+							NLFLIBS="-L $MYABSPATH/SDL2/lib -lSDL2main -lSDL2 -lSDL2_image -L ./ -lNLF"
+							cp SDL2/lib/*.so* $PROJECTPATH/$USERPROJECT/
+							CC="gcc"
+							COMPILEPATH="linux32"
+						;;
+					esac
+				;;
+
+				-l2w )
+					EXECEXTENTION=".exe"
+					case $2 in
+						-64to32 | -32to32 )
+							NLFLIBS="-L $MYABSPATH/SDL2/4windows/SDL2/32/ -lmingw32 -lSDL2main -lSDL2 -L $MYABSPATH/SDL2/4windows/SDL2_image/32/ -lSDL2_image -L ./ -lNLF"
+							cp SDL2/4windows/SDL2/32/*.lib $PROJECTPATH/$USERPROJECT/
+							cp SDL2/4windows/SDL2/32/*.dll $PROJECTPATH/$USERPROJECT/
+							cp SDL2/4windows/SDL2_image/32/*.dll $PROJECTPATH/$USERPROJECT/
+							CC="i686-w64-mingw32-gcc"
+							COMPILEPATH="windows32"
+						;;
+
+						-64to64 | -32to64 )
+							NLFLIBS="-L $MYABSPATH/SDL2/4windows/SDL2/64/ -lmingw32 -lSDL2main -lSDL2 -L $MYABSPATH/SDL2/4windows/SDL2_image/64/ -lSDL2_image -L ./ -lNLF"
+							cp SDL2/4windows/SDL2/64/*.lib $PROJECTPATH/$USERPROJECT/
+							cp SDL2/4windows/SDL2/64/*.dll $PROJECTPATH/$USERPROJECT/
+							cp SDL2/4windows/SDL2_image/64/*.dll $PROJECTPATH/$USERPROJECT/
+							CC="x86_64-w64-mingw32-gcc"
+							COMPILEPATH="windows64"
+						;;
+					esac
+				;;
+
+				-l2osx | -l2a | -l2ios )
+					echo "Sorry, compiling from linux to osx, android or ios still not supported"
+					exit 15
+				;;
+			esac
+
+			#preparing direcotries
+			cd $PROJECTPATH/$USERPROJECT
+			rm -f -v -r $COMPILEPATH
+			create_path $COMPILEPATH
+			cd ../../
+			cp BINARIES/$COMPILEPATH/* $PROJECTPATH/$USERPROJECT/
+			cd $PROJECTPATH/$USERPROJECT
+			echo "all libs set"
+
+			#compile the project
+			local SRCS=*.c
+			local EXEC="main"
+
+			for file in $SRCS
+			do
+				set -x
+				$CC $CFLAGS $NLFINCLUDES $SDL2INCLUDES $SDL2IMAGE2INCLUDES -fPIC -c $file -o ${file:0:$((${#file}-1))}o
+				set +x
+			done
+
+			set -x
+			$CC -Wl,-rpath=./ $CFLAGS $NLFINCLUDES $SDL2INCLUDES $SDL2IMAGE2INCLUDES ./*.o -o "$EXEC$EXECEXTENTION" $NLFLIBS
+			set +x
+
+			#coping build
+			mv ./*dll ./*.so* ./*.lib $COMPILEPATH/
+			mv $EXEC$EXECEXTENTION $COMPILEPATH/
+			rm -f -v ./*.o ./*.h.gch $EXEC$EXECEXTENTION
+			cp -R data/ $COMPILEPATH/
+
+			cd $MYABSPATH
+		;;
+
+		-osx2l | -osx2w | -osx2osx | -osx2a | -osx2ios )
+			echo "Sorry, specific OSX building tools not developed yet"
+			exit 12
+		;;
+
+		-w2l | -w2w | -w2osx | -w2a | -w2ios )
+			echo "Sorry, windows building tools not developed yet"
+			exit 16
+		;;
+	esac
+}
+###############
+
+##START
+init
+ANSWER=$("$BOX" --title "NLF Project Manager" --menu "What do you need?" 10 30 2 \
+"1" "Create new project" \
+"2" "Build my project" 3>&1 1>&2 2>&3)
+if ! [ $? = 0 ]; then
+	echo "Canceled"
+	exit 6
+fi
+
+case $ANSWER in
+	1 ) #Create new project
+		echo "ok, lets make a new project"
+		USERPROJECT=$("$BOX" --title "New Project" --inputbox "What's the project name?" 10 60 MyProject 3>&1 1>&2 2>&3)
+		if [ $? = 0 ]; then
+			echo "chosen path: " $PROJECTPATH/$USERPROJECT
+			create_path $PROJECTPATH
+			create_path "$PROJECTPATH/$USERPROJECT" --exclusive
+			create_path "$PROJECTPATH/$USERPROJECT/data"
+		else
+			echo "Canceled"
+			exit 3
+		fi
+
+		API=$("$BOX" --title "NLF_API" --menu "choose your API" 10 25 2 \
+		"C" "Be powerful" \
+		"lua" "Make it easy" 3>&1 1>&2 2>&3)
+		if [ $? = 0 ]; then
+			echo "API: " $API
+		else
+			echo "You chose Cancel."
+			exit 4
+		fi
+		make_main $API
+		if [ "$API" == "C" ]; then
+			$BOX --title "All ready already =)" --msgbox "Now, edit the main.c file at the mark, add as many .h and .c file as you need. And do not forget, put all data you'll need insed \"data/\" inside your project's folder" 10 60
+		elif [ "$API" == "lua" ]; then
+			$BOX --title "All ready already =)" --msgbox "Now, edit the main.lua file at the mark, add as many .lua scripts as you need. And do not forget, put all data you'll need insed \"data/\" inside your project's folder" 10 60
+		fi
+	;;
+
+	2 ) #Build my project
+		if ! [ -d "$PROJECTPATH" ]; then
+			echo "sorry... any project have been created yet."
+			echo "Perhaps is signal from the gods that you should create your own NLF project! =)"
+			exit 7
+		fi
+
+		COUNT=1
+		AUX=0;
+		for proj in $PROJECTPATH/*; do
+			if ! [ -d $proj ]; then
+				echo "$proj is not a directory, what the hell is it doing here?"
+				rm -v -f $proj
+			else
+				proj=${proj:${#PROJECTPATH}}
+				STR[AUX]="${COUNT} ${proj:1}"
+				PROJECTS[AUX]=${proj:1}
+				COUNT=$(($COUNT + 1))
+				AUX=$(($AUX + 1))
+			fi
+		done
+		USERPROJECT=$($BOX --title "NLF Project builder" --menu "Choose the project" 10 30 2 ${STR[@]} 3>&1 1>&2 2>&3)
+		if ! [ $? = 0 ]; then
+			echo "Canceled"
+			exit 8
+		fi
+		USERPROJECT=$(($USERPROJECT-1))
+		USERPROJECT=${PROJECTS[USERPROJECT]}
+		if ! [ -d "$PROJECTPATH/$USERPROJECT" ]; then
+			echo "The project \"$USERPROJECT\" do not exit"
+			exit 9;
+		fi
+
+		echo "ok, lets build your project"
+		echo "Your MACHINE_TYPE: $MACHINE_TYPE"
+		echo "Your SYSTEM_TYPE: $SYSTEM_TYPE"
+
+		case $SYSTEM_TYPE in
+			Linux )
+				echo "Linux system detected"
+				BUILDTO=' l2l'' Linux '' l2w'' Windows'' l2osx'' OSX'' l2a'' Android'' l2ios'' iOS'
+			;;
+
+			Darwin )
+				echo "OSX system detected"
+				if ("$BOX" --title "#WARNING#" --yesno "The project building for OSX isn't developed yet. Do you wanna try building using linux settings? It may work, really =]" 10 60) then
+					BUILDTO=' l2l'' Linux '' l2w'' Windows'' l2osx'' OSX'' l2a'' Android'' l2ios'' iOS'
+				else
+					BUILDTO=' osx2l'' Linux '' osx2w'' Windows'' osx2osx'' OSX'' osx2a'' Android'' osx2ios'' iOS'
+				fi
+			;;
+
+			UWIN-W7 | CYGWIN_NT-6.1* )
+				echo "Windows system detected"
+				BUILDTO=' w2l'' Linux '' w2w'' Windows'' w2osx'' OSX'' w2a'' Android'' w2ios'' iOS'
+			;;
+
+			*)
+				BUILDTO="System not supported"
+				exit 11
+			;;
+		esac
+
+		BUILDTO=$("$BOX" --title "Building For" --menu "Build your projecto to" 15 35 6 "me" "$SYSTEM_TYPE" $BUILDTO 3>&1 1>&2 2>&3)
+		if ! [ $? = 0 ]; then
+			echo "Canceled"
+			exit 10
+		fi
+
+		if [ "$BUILDTO" == "me" ]; then
+			case $SYSTEM_TYPE in
+				Linux )
+					BUILDTO="l2l"
+				;;
+
+				Darwin )
+					BUILDTO="osx2osx"
+				;;
+
+				UWIN-W7 | CYGWIN_NT-6.1* )
+					BUILDTO="w2w"
+				;;
+			esac
+		fi
+		FLAGSYS="-$BUILDTO"
+
+		BUILDTO=$("$BOX" --title "Building For" --menu "Build your projecto to" 10 30 3 "me" "$MACHINE_TYPE" "32" "32 bits system" "64" "64 bits system" 3>&1 1>&2 2>&3)
+		if ! [ $? = 0 ]; then
+			echo "Canceled"
+			exit 10
+		fi
+
+		if [ "$BUILDTO" == "me" ]; then
+			case $MACHINE_TYPE in
+				x86_64 | amd64 )
+					BUILDTO="64"
+				;;
+
+				x86 | i*86 )
+					BUILDTO="32"
+				;;
+
+				* )
+					echo "something went really wrong. Architecture not recognized"
+					echo "try not to use the the 'me' next time"
+					exit 13
+				;;
+			esac
+		fi
+
+		if [ "$MACHINE_TYPE" == "x86_64" ] || [ "$MACHINE_TYPE" == "amd64" ]; then
+			if [ "$BUILDTO" == "64" ]; then
+				FLAGARCH="-64to64"
+			else
+				FLAGARCH="-64to32"
+			fi
+		elif [ "$MACHINE_TYPE" == "x86" ] || [ "$MACHINE_TYPE" == "i*86" ]; then
+			if [ "$BUILDTO" == "64" ]; then
+				FLAGARCH="-32to64"
+			else
+				FLAGARCH="-32to32"
+			fi
+		fi
+
+		build_nlf $FLAGSYS "-${FLAGARCH:5}"
+		make_c_proj $FLAGSYS $FLAGARCH
+	;;
+esac

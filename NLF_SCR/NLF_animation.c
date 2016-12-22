@@ -6,14 +6,7 @@ void NLF_animation_init()
 {
 	secCounter = 0;
 
-	actorsAniMutex = SDL_CreateMutex();
-	if (actorsAniMutex == NULL)
-	{
-		printf("Could not create Animation mutex\n");
-		printf("\tAborting\n");
-		NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not create Animation mutex", SDL_GetError(), NULL);
-		exit(NLF_ErrorInsufficientMemory);
-	}
+	omp_init_lock(&actorsAniMutex);
 
 	NLF_actorsAni = (struct AniVector*) malloc(sizeof(struct AniVector));
 	if(NLF_actorsAni == NULL)
@@ -41,8 +34,7 @@ void NLF_animation_quit()
 	NLF_USInt i, i2;
 	struct AniVector *auxvect;
 
-	SDL_DestroyMutex(actorsAniMutex);
-	actorsAniMutex = NULL;
+	omp_destroy_lock(&actorsAniMutex);
 
 	while(NLF_actorsAni != NULL)
 	{
@@ -84,74 +76,71 @@ arguments:
 	NLF_Animation *aniaux;
 	NLF_USInt i;
 
-	if(SDL_LockMutex(actorsAniMutex) == 0)
+	/*CRITICAL REGION*/
+	omp_set_lock(&actorsAniMutex);
+	auxvect = NLF_actorsAni;
+	while(auxvect->fristEmpty == ANIVECTORSIZE)
 	{
-		auxvect = NLF_actorsAni;
-		while(auxvect->fristEmpty == ANIVECTORSIZE)
+		if(auxvect->next == NULL)
 		{
+			auxvect->next = (struct AniVector*) malloc(sizeof(struct AniVector));
 			if(auxvect->next == NULL)
 			{
-				auxvect->next = (struct AniVector*) malloc(sizeof(struct AniVector));
-				if(auxvect->next == NULL)
-				{
-					printf("Could not allocate new animation");
-					printf("\tAborting\n");
-					NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new animation", NULL);
-					SDL_UnlockMutex(actorsAniMutex);
-					return NLF_ErrorInsufficientMemory;
-				}
-				auxvect = auxvect->next;
-
-				auxvect->fristEmpty = 0;
-				auxvect->next = NULL;
-				auxvect->anivect = (NLF_Animation**) calloc(ANIVECTORSIZE, sizeof(NLF_Animation*));
-				if(auxvect->anivect == NULL)
-				{
-					printf("\tCould not allocate animation vector\n");
-					printf("\tAborting\n");
-					NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate animation vector", NULL);
-					SDL_UnlockMutex(actorsAniMutex);
-					return NLF_ErrorInsufficientMemory;
-				}
-			}else{
-				auxvect = auxvect->next;
+				printf("Could not allocate new animation");
+				printf("\tAborting\n");
+				NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new animation", NULL);
+				omp_unset_lock(&actorsAniMutex);
+				return NLF_ErrorInsufficientMemory;
 			}
-		}
+			auxvect = auxvect->next;
 
-		//allocate the new NLF_Animaiton
-		aniaux = (NLF_Animation*) malloc(sizeof(NLF_Animation));
-		if(aniaux == NULL)
-		{
-			printf("Could not allocate new animation");
-			printf("\tAborting\n");
-			NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new animation", NULL);
-			SDL_UnlockMutex(actorsAniMutex);
-			return NLF_ErrorInsufficientMemory;
+			auxvect->fristEmpty = 0;
+			auxvect->next = NULL;
+			auxvect->anivect = (NLF_Animation**) calloc(ANIVECTORSIZE, sizeof(NLF_Animation*));
+			if(auxvect->anivect == NULL)
+			{
+				printf("\tCould not allocate animation vector\n");
+				printf("\tAborting\n");
+				NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate animation vector", NULL);
+				omp_unset_lock(&actorsAniMutex);
+				return NLF_ErrorInsufficientMemory;
+			}
+		}else{
+			auxvect = auxvect->next;
 		}
-		*ID = auxvect->fristEmpty;
-		aniaux->aniAmnt = animationAmnt;
-		aniaux->currentAni = NULL;
-		aniaux->screenID = screenPosition;
-		auxvect->anivect[auxvect->fristEmpty] = aniaux;
-
-		//actualize auxvect->fristEmpty
-		for(auxvect->fristEmpty++; auxvect->anivect[auxvect->fristEmpty] == NULL && auxvect->fristEmpty < ANIVECTORSIZE; auxvect->fristEmpty++);
-		
-		//allocing animaitons
-		aniaux->animations = (struct spriteSheet**) calloc(aniaux->aniAmnt, sizeof(struct spriteSheet*));
-		if(aniaux->animations == NULL)
-		{
-			printf("Could not allocate new sprites");
-			printf("\tAborting\n");
-			NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new sprites", NULL);
-			SDL_UnlockMutex(actorsAniMutex);
-			return NLF_ErrorInsufficientMemory;
-		}
-
-		SDL_UnlockMutex(actorsAniMutex);
-	} else {
-		printf("Couldn't lock mutex\n");
 	}
+
+	//allocate the new NLF_Animaiton
+	aniaux = (NLF_Animation*) malloc(sizeof(NLF_Animation));
+	if(aniaux == NULL)
+	{
+		printf("Could not allocate new animation");
+		printf("\tAborting\n");
+		NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new animation", NULL);
+		omp_unset_lock(&actorsAniMutex);
+		return NLF_ErrorInsufficientMemory;
+	}
+	*ID = auxvect->fristEmpty;
+	aniaux->aniAmnt = animationAmnt;
+	aniaux->currentAni = NULL;
+	aniaux->screenID = screenPosition;
+	auxvect->anivect[auxvect->fristEmpty] = aniaux;
+
+	//actualize auxvect->fristEmpty
+	for(auxvect->fristEmpty++; auxvect->anivect[auxvect->fristEmpty] == NULL && auxvect->fristEmpty < ANIVECTORSIZE; auxvect->fristEmpty++);
+	
+	//allocing animaitons
+	aniaux->animations = (struct spriteSheet**) calloc(aniaux->aniAmnt, sizeof(struct spriteSheet*));
+	if(aniaux->animations == NULL)
+	{
+		printf("Could not allocate new sprites");
+		printf("\tAborting\n");
+		NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new sprites", NULL);
+		omp_unset_lock(&actorsAniMutex);
+		return NLF_ErrorInsufficientMemory;
+	}
+	omp_unset_lock(&actorsAniMutex);
+	/*****************/
 
 	return e;
 }
@@ -191,7 +180,7 @@ NLF_Error NLF_animation_add(NLF_USInt ID, const char *spriteAdress, NLF_USInt co
 		sprintf(str, "Animation ID=%d not found\n", ID);
 		printf("%s", str);
 		NLF_error_set_flag(NLF_ErrorAnimatinNotFound, 1, str, NULL);
-		SDL_UnlockMutex(actorsAniMutex);
+		omp_unset_lock(&actorsAniMutex);
 		return NLF_ErrorAnimatinNotFound;
 	}
 
@@ -199,92 +188,89 @@ NLF_Error NLF_animation_add(NLF_USInt ID, const char *spriteAdress, NLF_USInt co
 	if(NLF_OSS_check_file_existence(spriteAdress) == NLF_False)
 	{
 		printf("File \"%s\" not found\n", spriteAdress);
-		SDL_UnlockMutex(actorsAniMutex);
+		omp_unset_lock(&actorsAniMutex);
 		return NLF_ErrorFileNotFound;
 	}
 
-	if(SDL_LockMutex(actorsAniMutex) == 0)
+	/*CRITICAL REGION*/
+	omp_set_lock(&actorsAniMutex);
+	//checking animaiton sprite capacity
+	for(putIn = 0; putIn < aniaux->aniAmnt && aniaux->animations[putIn] != NULL; putIn++);
+	if(putIn == aniaux->aniAmnt)
 	{
-		//checking animaiton sprite capacity
-		for(putIn = 0; putIn < aniaux->aniAmnt && aniaux->animations[putIn] != NULL; putIn++);
-		if(putIn == aniaux->aniAmnt)
-		{
-			sprintf(str, "Animation ID=%d can't hold another sprite, it's already full: %d\n", ID, aniaux->aniAmnt);
-			printf("%s", str);
-			NLF_error_set_flag(NLF_ErrorMultiDef, 1, str, NULL);
-			SDL_UnlockMutex(actorsAniMutex);
-			return NLF_ErrorMultiDef;
-		}
-
-		//load the image file
-		loadedimg = IMG_Load(spriteAdress);
-		if( loadedimg == NULL )
-		{
-			printf("Couldn't load image \"%s\"", spriteAdress);
-			sprintf(str, IMG_GetError());
-			str[99] = '\0';
-			printf("SDL_image Error: %s\n", str);
-			NLF_error_set_flag(NLF_ErrorSDLImageLoad, 4, "Couldn't load image ", spriteAdress, "SDL_image Error: ", str, NULL);
-			SDL_UnlockMutex(actorsAniMutex);
-			return NLF_ErrorSDLImageLoad;
-		}
-
-		//transforme surface in texture
-		tempTexture = SDL_CreateTextureFromSurface(window_rederer, loadedimg);
-		if (tempTexture == NULL)
-		{
-			sprintf(str, IMG_GetError());
-			str[99] = '\0';
-			printf("Couldn't load create texture: %s\n", str);
-			NLF_error_set_flag(NLF_ErrorSDLCreatingFail, 2, "Couldn't load create texture: ", str, NULL);
-			SDL_UnlockMutex(actorsAniMutex);
-			return NLF_ErrorSDLCreatingFail;
-		}
-		free(loadedimg);
-
-		//allocate the frames
-		frames = (NLF_Rect*) malloc(sizeof(NLF_Rect)*frameAmnt);
-		if(frames == NULL)
-		{
-			printf("Could not allocate new frames");
-			printf("\tAborting\n");
-			NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new frames", NULL);
-			SDL_UnlockMutex(actorsAniMutex);
-			return NLF_ErrorInsufficientMemory;
-		}
-		SDL_QueryTexture(tempTexture, NULL, NULL, &w, &h);
-		w = w / columns;
-		h = h / lines;
-		for(i = 0; i < frameAmnt; i++)
-		{
-			frames[i].x = w * i;
-			frames[i].y = h * (i % columns);
-			frames[i].w = w;
-			frames[i].h = h;
-		}
-
-		//setting the new animation fields
-		aniaux->animations[putIn] = (struct spriteSheet*) malloc(sizeof(struct spriteSheet));
-		if(aniaux->animations[putIn] == NULL)
-		{
-			printf("Could not allocate new sprites");
-			printf("\tAborting\n");
-			NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new sprites", NULL);
-			SDL_UnlockMutex(actorsAniMutex);
-			return NLF_ErrorInsufficientMemory;
-		}
-		*aniID = putIn;
-		aniaux->animations[putIn]->sheet = tempTexture;
-		aniaux->animations[putIn]->frames = frames;
-		aniaux->animations[putIn]->framesAmnt = frameAmnt;
-		aniaux->animations[putIn]->currentFrame = NULL;
-		aniaux->animations[putIn]->way = way;
-		aniaux->animations[putIn]->refreshTime = (abs(((int)(frameAmnt/1000))*1000 - 1000) <= abs(((int)(frameAmnt/1000)+1)*1000 - 1000))? (frameAmnt/1000) : ((frameAmnt/1000)+1);
-
-		SDL_UnlockMutex(actorsAniMutex);
-	} else {
-		printf("Couldn't lock mutex\n");
+		sprintf(str, "Animation ID=%d can't hold another sprite, it's already full: %d\n", ID, aniaux->aniAmnt);
+		printf("%s", str);
+		NLF_error_set_flag(NLF_ErrorMultiDef, 1, str, NULL);
+		omp_unset_lock(&actorsAniMutex);
+		return NLF_ErrorMultiDef;
 	}
+
+	//load the image file
+	loadedimg = IMG_Load(spriteAdress);
+	if( loadedimg == NULL )
+	{
+		printf("Couldn't load image \"%s\"", spriteAdress);
+		sprintf(str, IMG_GetError());
+		str[99] = '\0';
+		printf("SDL_image Error: %s\n", str);
+		NLF_error_set_flag(NLF_ErrorSDLImageLoad, 4, "Couldn't load image ", spriteAdress, "SDL_image Error: ", str, NULL);
+		omp_unset_lock(&actorsAniMutex);
+		return NLF_ErrorSDLImageLoad;
+	}
+
+	//transforme surface in texture
+	tempTexture = SDL_CreateTextureFromSurface(window_rederer, loadedimg);
+	if (tempTexture == NULL)
+	{
+		sprintf(str, IMG_GetError());
+		str[99] = '\0';
+		printf("Couldn't load create texture: %s\n", str);
+		NLF_error_set_flag(NLF_ErrorSDLCreatingFail, 2, "Couldn't load create texture: ", str, NULL);
+		omp_unset_lock(&actorsAniMutex);
+		return NLF_ErrorSDLCreatingFail;
+	}
+	free(loadedimg);
+
+	//allocate the frames
+	frames = (NLF_Rect*) malloc(sizeof(NLF_Rect)*frameAmnt);
+	if(frames == NULL)
+	{
+		printf("Could not allocate new frames");
+		printf("\tAborting\n");
+		NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new frames", NULL);
+		omp_unset_lock(&actorsAniMutex);
+		return NLF_ErrorInsufficientMemory;
+	}
+	SDL_QueryTexture(tempTexture, NULL, NULL, &w, &h);
+	w = w / columns;
+	h = h / lines;
+	for(i = 0; i < frameAmnt; i++)
+	{
+		frames[i].x = w * i;
+		frames[i].y = h * (i % columns);
+		frames[i].w = w;
+		frames[i].h = h;
+	}
+
+	//setting the new animation fields
+	aniaux->animations[putIn] = (struct spriteSheet*) malloc(sizeof(struct spriteSheet));
+	if(aniaux->animations[putIn] == NULL)
+	{
+		printf("Could not allocate new sprites");
+		printf("\tAborting\n");
+		NLF_error_make_file_crash_report(NLF_ErrorInsufficientMemory, "Could not allocate new sprites", NULL);
+		omp_unset_lock(&actorsAniMutex);
+		return NLF_ErrorInsufficientMemory;
+	}
+	*aniID = putIn;
+	aniaux->animations[putIn]->sheet = tempTexture;
+	aniaux->animations[putIn]->frames = frames;
+	aniaux->animations[putIn]->framesAmnt = frameAmnt;
+	aniaux->animations[putIn]->currentFrame = NULL;
+	aniaux->animations[putIn]->way = way;
+	aniaux->animations[putIn]->refreshTime = (abs(((int)(frameAmnt/1000))*1000 - 1000) <= abs(((int)(frameAmnt/1000)+1)*1000 - 1000))? (frameAmnt/1000) : ((frameAmnt/1000)+1);
+	omp_unset_lock(&actorsAniMutex);
+	/*****************/
 
 	return NLF_ErrorNone;
 }
@@ -320,24 +306,21 @@ NLF_Error NLF_animation_set_way(NLF_USInt ID, NLF_USInt aniID, short int way)
 		return NLF_ErrorAnimatinNotFound;
 	}
 
-	if(SDL_LockMutex(actorsAniMutex) == 0)
+	/*CRITICAL REGION*/
+	omp_set_lock(&actorsAniMutex);
+	if(aniID < 0 || aniID >= aniaux->aniAmnt)
 	{
-		if(aniID < 0 || aniID >= aniaux->aniAmnt)
-		{
-			printf("In animation ID=%d there's not sheet with aniID=%d\n", ID, aniID);
-			SDL_UnlockMutex(actorsAniMutex);
-			return NLF_ErrorBadArgument;
-		}
-
-		if(way == 0)
-			aniaux->animations[aniID]->way *= -1;
-		else
-			aniaux->animations[aniID]->way *= way;
-
-		SDL_UnlockMutex(actorsAniMutex);
-	} else {
-		printf("Couldn't lock mutex\n");
+		printf("In animation ID=%d there's not sheet with aniID=%d\n", ID, aniID);
+		omp_unset_lock(&actorsAniMutex);
+		return NLF_ErrorBadArgument;
 	}
+
+	if(way == 0)
+		aniaux->animations[aniID]->way *= -1;
+	else
+		aniaux->animations[aniID]->way *= way;
+	omp_unset_lock(&actorsAniMutex);
+	/*****************/
 
 	return NLF_ErrorNone;
 }
@@ -361,54 +344,51 @@ NLF_Animation* _NLF_animation_search_n_dell(NLF_USInt ID, NLF_bool dell)
 
 	ID = ID % ANIVECTORSIZE;
 
-	if(SDL_LockMutex(actorsAniMutex) == 0)
+	/*CRITICAL REGION*/
+	omp_set_lock(&actorsAniMutex);
+	auxvect = NLF_actorsAni;
+	for(; listID > 0; listID++)
 	{
-		auxvect = NLF_actorsAni;
-		for(; listID > 0; listID++)
-		{
-			ant = auxvect;
-			auxvect = auxvect->next;
-			if(auxvect == NULL)
-				break;
-		}
-
-		if(auxvect != NULL)
-			ret = auxvect->anivect[ID];
-		else
-			ret = NULL;
-
-		if(dell == NLF_True && ret != NULL)
-		{
-			ret = NULL;
-
-			//freeing animation
-			for(i = 0; i < auxvect->anivect[ID]->aniAmnt; i++)
-			{
-				if(auxvect->anivect[ID]->animations[i] != NULL)
-				{
-					SDL_DestroyTexture(auxvect->anivect[ID]->animations[i]->sheet);
-					free(auxvect->anivect[ID]->animations[i]->frames);
-					free(auxvect->anivect[ID]->animations[i]);
-				}
-			}
-			free(auxvect->anivect[ID]->animations);
-			free(auxvect->anivect[ID]);
-			auxvect->anivect[ID] = NULL;
-
-			if(ant != NULL)
-			{
-				ant->next = auxvect->next;
-				free(auxvect->anivect);
-				free(auxvect);
-			}
-			if(auxvect->fristEmpty > ID)
-				auxvect->fristEmpty = ID;
-		}
-
-		SDL_UnlockMutex(actorsAniMutex);
-	} else {
-		printf("Couldn't lock mutex\n");
+		ant = auxvect;
+		auxvect = auxvect->next;
+		if(auxvect == NULL)
+			break;
 	}
+
+	if(auxvect != NULL)
+		ret = auxvect->anivect[ID];
+	else
+		ret = NULL;
+
+	if(dell == NLF_True && ret != NULL)
+	{
+		ret = NULL;
+
+		//freeing animation
+		for(i = 0; i < auxvect->anivect[ID]->aniAmnt; i++)
+		{
+			if(auxvect->anivect[ID]->animations[i] != NULL)
+			{
+				SDL_DestroyTexture(auxvect->anivect[ID]->animations[i]->sheet);
+				free(auxvect->anivect[ID]->animations[i]->frames);
+				free(auxvect->anivect[ID]->animations[i]);
+			}
+		}
+		free(auxvect->anivect[ID]->animations);
+		free(auxvect->anivect[ID]);
+		auxvect->anivect[ID] = NULL;
+
+		if(ant != NULL)
+		{
+			ant->next = auxvect->next;
+			free(auxvect->anivect);
+			free(auxvect);
+		}
+		if(auxvect->fristEmpty > ID)
+			auxvect->fristEmpty = ID;
+	}
+	omp_unset_lock(&actorsAniMutex);
+	/*****************/
 
 	return ret;
 }
@@ -435,32 +415,29 @@ NLF_Error _NLF_animation_stop_start(NLF_USInt ID, NLF_USInt aniID, NLF_bool sos)
 		return NLF_ErrorActorNotFound;
 	}
 
-	if(SDL_LockMutex(actorsAniMutex) == 0)
+	/*CRITICAL REGION*/
+	omp_set_lock(&actorsAniMutex);
+	if(aniID >= aniaux->aniAmnt)
 	{
-		if(aniID >= aniaux->aniAmnt)
-		{
-			printf("In animation %d sprite %d not found\n", ID, aniID);
-			SDL_UnlockMutex(actorsAniMutex);
-			return NLF_ErrorAnimatinNotFound;
-		}
-
-		if(sos == NLF_True)
-		{
-			//start animation
-			aniaux->currentAni = aniaux->animations[aniID];
-			if(aniaux->currentAni->way == 1)
-				aniaux->currentAni->currentFrame = aniaux->currentAni->frames; //LEMBRAR DE CHECAR A TIPAGEM DESTA LINHA!!!
-			else
-				aniaux->currentAni->currentFrame = (aniaux->currentAni->frames + aniaux->currentAni->framesAmnt-1);
-		}else{
-			//stop animation
-			aniaux->currentAni = NULL;
-		}
-
-		SDL_UnlockMutex(actorsAniMutex);
-	} else {
-		printf("Couldn't lock mutex\n");
+		printf("In animation %d sprite %d not found\n", ID, aniID);
+		omp_unset_lock(&actorsAniMutex);
+		return NLF_ErrorAnimatinNotFound;
 	}
+
+	if(sos == NLF_True)
+	{
+		//start animation
+		aniaux->currentAni = aniaux->animations[aniID];
+		if(aniaux->currentAni->way == 1)
+			aniaux->currentAni->currentFrame = aniaux->currentAni->frames; //LEMBRAR DE CHECAR A TIPAGEM DESTA LINHA!!!
+		else
+			aniaux->currentAni->currentFrame = (aniaux->currentAni->frames + aniaux->currentAni->framesAmnt-1);
+	}else{
+		//stop animation
+		aniaux->currentAni = NULL;
+	}
+	omp_unset_lock(&actorsAniMutex);
+	/*****************/
 
 	return NLF_ErrorNone;
 }
@@ -493,14 +470,11 @@ NLF_Error NLF_animation_change_screen(NLF_USInt ID, NLF_USInt screenPosition)
 		return NLF_ErrorActorNotFound;
 	}
 
-	if(SDL_LockMutex(actorsAniMutex) == 0)
-	{
-		aniaux->screenID = screenPosition;
-
-		SDL_UnlockMutex(actorsAniMutex);
-	} else {
-		printf("Couldn't lock mutex\n");
-	}
+	/*CRITICAL REGION*/
+	omp_set_lock(&actorsAniMutex);
+	aniaux->screenID = screenPosition;
+	omp_unset_lock(&actorsAniMutex);
+	/*****************/
 
 	return NLF_ErrorNone;
 }
@@ -515,31 +489,28 @@ void NLF_animation_update()
 	struct AniVector *auxvect;
 	NLF_USInt i, aux;
 
-	if(SDL_LockMutex(actorsAniMutex) == 0)
+	/*CRITICAL REGION*/
+	omp_set_lock(&actorsAniMutex);
+	for(auxvect = NLF_actorsAni; auxvect != NULL; auxvect = auxvect->next)
 	{
-		for(auxvect = NLF_actorsAni; auxvect != NULL; auxvect = auxvect->next)
+		for(i = 0; i < ANIVECTORSIZE; i++)
 		{
-			for(i = 0; i < ANIVECTORSIZE; i++)
+			if(auxvect->anivect[i] != NULL && auxvect->anivect[i]->currentAni != NULL)
 			{
-				if(auxvect->anivect[i] != NULL && auxvect->anivect[i]->currentAni != NULL)
+				aux = secCounter % auxvect->anivect[i]->currentAni->refreshTime;
+				if(&auxvect->anivect[i]->currentAni->frames[aux] != auxvect->anivect[i]->currentAni->currentFrame)
 				{
-					aux = secCounter % auxvect->anivect[i]->currentAni->refreshTime;
-					if(&auxvect->anivect[i]->currentAni->frames[aux] != auxvect->anivect[i]->currentAni->currentFrame)
-					{
-						if(auxvect->anivect[i]->currentAni->way == 1)
-							auxvect->anivect[i]->currentAni->currentFrame = &auxvect->anivect[i]->currentAni->frames[aux];
-						else
-							auxvect->anivect[i]->currentAni->currentFrame = &auxvect->anivect[i]->currentAni->frames[auxvect->anivect[i]->currentAni->framesAmnt-1 - aux];
-						//update on screen!
-					}
+					if(auxvect->anivect[i]->currentAni->way == 1)
+						auxvect->anivect[i]->currentAni->currentFrame = &auxvect->anivect[i]->currentAni->frames[aux];
+					else
+						auxvect->anivect[i]->currentAni->currentFrame = &auxvect->anivect[i]->currentAni->frames[auxvect->anivect[i]->currentAni->framesAmnt-1 - aux];
+					//update on screen!
 				}
 			}
 		}
-
-		SDL_UnlockMutex(actorsAniMutex);
-	} else {
-		printf("Couldn't lock mutex\n");
 	}
+	omp_unset_lock(&actorsAniMutex);
+	/*****************/
 }
 /******************/
 
